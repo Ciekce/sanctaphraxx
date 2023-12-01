@@ -41,7 +41,7 @@ impl UaiHandler {
                 break;
             }
 
-            let cmd: Vec<&str> = line.trim().split_whitespace().collect();
+            let cmd: Vec<&str> = line.split_whitespace().collect();
             if cmd.is_empty() {
                 line.clear();
                 continue;

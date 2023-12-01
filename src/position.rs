@@ -168,9 +168,9 @@ impl Position {
                 }
             }
 
-            if file_idx > 8 {
+            if file_idx > 7 {
                 return Err(FenError::TooManyFiles(rank_idx as u32));
-            } else if file_idx < 8 {
+            } else if file_idx < 7 {
                 return Err(FenError::NotEnoughFiles(rank_idx as u32));
             }
         }

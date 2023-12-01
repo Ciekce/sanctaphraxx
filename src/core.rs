@@ -117,12 +117,12 @@ impl Square {
 
     #[must_use]
     pub fn flip_horizontal(&self) -> Self {
-        Self(self.0 ^ 0b000_111)
+        Self::from_coords(self.rank(), 6 - self.file())
     }
 
     #[must_use]
     pub fn flip_vertical(&self) -> Self {
-        Self(self.0 ^ 0b111_000)
+        Self::from_coords(6 - self.rank(), self.file())
     }
 }
 
