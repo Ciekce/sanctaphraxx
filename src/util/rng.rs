@@ -18,7 +18,6 @@
 
 use crate::util::misc::c_for;
 
-#[macro_export]
 macro_rules! next_jsf64 {
     ($s:ident) => {{
         let e = $s.a.wrapping_sub($s.b.rotate_left(7));
@@ -30,14 +29,12 @@ macro_rules! next_jsf64 {
     }};
 }
 
-pub(crate) use next_jsf64;
-
 #[derive(Debug, Copy, Clone)]
 pub struct Jsf64Rng {
-    pub a: u64,
-    pub b: u64,
-    pub c: u64,
-    pub d: u64,
+    a: u64,
+    b: u64,
+    c: u64,
+    d: u64,
 }
 
 impl Jsf64Rng {
@@ -60,4 +57,15 @@ impl Jsf64Rng {
     pub fn next_u64(&mut self) -> u64 {
         next_jsf64!(self)
     }
+}
+
+pub const fn fill_u64_array<const SIZE: usize>(seed: u64) -> [u64; SIZE] {
+    let mut rng = Jsf64Rng::new(seed);
+    let mut result = [0u64; SIZE];
+
+    c_for!(let mut i: usize = 0; i < SIZE; i += 1; {
+        result[i] = next_jsf64!(rng);
+    });
+
+    result
 }
