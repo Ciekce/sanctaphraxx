@@ -27,7 +27,7 @@ const TOTAL_SIZE: usize = COLOR_SQUARE_SIZE + STM_SIZE;
 const COLOR_SQUARE_OFFSET: usize = 0;
 const STM_OFFSET: usize = COLOR_SQUARE_OFFSET + COLOR_SQUARE_SIZE;
 
-const HASHES: [u64; TOTAL_SIZE] = rng::fill_u64_array(1234);
+const HASHES: [u64; TOTAL_SIZE] = rng::fill_u64_array(0x22ff7d8af027681b);
 
 #[must_use]
 pub fn color_square_key(c: Color, sq: Square) -> u64 {
