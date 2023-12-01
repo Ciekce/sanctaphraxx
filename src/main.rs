@@ -16,8 +16,6 @@
  * along with Sanctaphraxx. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#![feature(const_mut_refs)]
-
 mod bitboard;
 mod core;
 mod hash;

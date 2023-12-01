@@ -18,6 +18,7 @@
 
 use crate::c_for;
 use crate::core::*;
+use crate::next_jsf64;
 use crate::util::rng::Jsf64Rng;
 
 const COLOR_SQUARE_SIZE: usize = Color::N_COLORS * Square::N_SQUARES;
@@ -28,18 +29,16 @@ const TOTAL_SIZE: usize = COLOR_SQUARE_SIZE + STM_SIZE;
 const COLOR_SQUARE_OFFSET: usize = 0;
 const STM_OFFSET: usize = COLOR_SQUARE_OFFSET + COLOR_SQUARE_SIZE;
 
-const fn generate_hashes() -> [u64; TOTAL_SIZE] {
+const HASHES: [u64; TOTAL_SIZE] = {
     let mut rng = Jsf64Rng::new(1234);
     let mut hashes = [0u64; TOTAL_SIZE];
 
     c_for!(let mut i: usize = 0; i < TOTAL_SIZE; i += 1; {
-        hashes[i] = rng.next_u64();
+        hashes[i] = next_jsf64!(rng);
     });
 
     hashes
-}
-
-const HASHES: [u64; TOTAL_SIZE] = generate_hashes();
+};
 
 #[must_use]
 pub fn color_square_key(c: Color, sq: Square) -> u64 {
