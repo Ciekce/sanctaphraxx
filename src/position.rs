@@ -159,12 +159,18 @@ impl Position {
 
                 if let Some(empty_squares) = c.to_digit(10) {
                     file_idx += empty_squares;
-                } else if let Some(color) = Color::from_char(c) {
-                    state.colors[color.idx()]
-                        .set(Square::from_coords(rank_idx as u32, file_idx).flip_vertical());
-                    file_idx += 1;
                 } else {
-                    return Err(FenError::InvalidChar(c));
+                    let sq = Square::from_coords(rank_idx as u32, file_idx).flip_vertical();
+
+                    if let Some(color) = Color::from_char(c) {
+                        state.colors[color.idx()].set(sq);
+                        file_idx += 1;
+                    } else if c == '-' {
+                        state.gaps.set(sq);
+                        file_idx += 1;
+                    } else {
+                        return Err(FenError::InvalidChar(c));
+                    }
                 }
             }
 
