@@ -1,2 +1,3 @@
 [toolchain]
+# const_mut_refs
 channel = "nightly"
