@@ -20,7 +20,7 @@ use crate::ataxx_move::AtaxxMove;
 use crate::attacks::DOUBLES;
 use crate::position::Position;
 
-pub type MoveList = arrayvec::ArrayVec<AtaxxMove, 256>;
+pub type MoveList = arrayvec::ArrayVec<AtaxxMove, 128>;
 
 pub fn generate_moves(dst: &mut MoveList, pos: &Position) {
     if pos.game_over() {
