@@ -22,6 +22,7 @@ use crate::attacks::SINGLES;
 use crate::bitboard::Bitboard;
 use crate::core::{Color, Square};
 use crate::hash;
+use std::cmp::Ordering;
 use std::fmt::{Display, Formatter};
 
 #[derive(Debug, Clone)]
@@ -77,7 +78,7 @@ impl Default for BoardState {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Position {
     blue_to_move: bool,
     fullmove: u32,
@@ -97,6 +98,12 @@ pub enum FenError {
     InvalidStm,
     InvalidHalfmove,
     InvalidFullmove,
+}
+
+#[derive(Debug)]
+pub enum GameResult {
+    Win(Color),
+    Draw,
 }
 
 impl Position {
@@ -270,7 +277,23 @@ impl Position {
             || (state.occupancy().expand().expand() & state.empty_squares(self.gaps)).is_empty()
     }
 
+    #[must_use]
+    pub fn result(&self) -> GameResult {
+        let state = self.curr_state();
+
+        let red_count = state.red_occupancy().popcount();
+        let blue_count = state.blue_occupancy().popcount();
+
+        return match red_count.cmp(&blue_count) {
+            Ordering::Less => GameResult::Win(Color::BLUE),
+            Ordering::Equal => GameResult::Draw,
+            Ordering::Greater => GameResult::Win(Color::RED),
+        };
+    }
+
     pub fn apply_move<const HISTORY: bool, const UPDATE_KEY: bool>(&mut self, m: AtaxxMove) {
+        debug_assert!(m != AtaxxMove::None);
+
         let us = self.side_to_move();
         let them = us.flip();
 

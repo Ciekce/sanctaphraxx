@@ -16,19 +16,12 @@
  * along with Sanctaphraxx. If not, see <https://www.gnu.org/licenses/>.
  */
 
-mod ataxx_move;
-mod attacks;
-mod bitboard;
-mod core;
-mod eval;
-mod hash;
-mod movegen;
-mod perft;
-mod position;
-mod search;
-mod uai;
-mod util;
+use crate::core::Score;
+use crate::position::Position;
 
-fn main() {
-    uai::run();
+pub fn static_eval(pos: &Position) -> Score {
+    let us = pos.side_to_move();
+    let them = us.flip();
+
+    pos.color_occupancy(us).popcount() as Score - pos.color_occupancy(them).popcount() as Score
 }

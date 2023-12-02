@@ -22,6 +22,7 @@ use std::str::FromStr;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum AtaxxMove {
+    None,
     Null,
     Single(Square),
     Double(Square, Square),
@@ -70,6 +71,7 @@ impl FromStr for AtaxxMove {
 impl Display for AtaxxMove {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match *self {
+            AtaxxMove::None => write!(f, "<none>"),
             AtaxxMove::Null => write!(f, "0000"),
             AtaxxMove::Single(to) => write!(f, "{}", to),
             AtaxxMove::Double(from, to) => write!(f, "{}{}", from, to),

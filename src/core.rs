@@ -18,6 +18,7 @@
 
 use crate::bitboard::Bitboard;
 use std::fmt::{Display, Formatter};
+use std::ops::*;
 use std::str::FromStr;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
@@ -219,6 +220,14 @@ impl Color {
         self.value as usize
     }
 }
+
+pub type Score = i32;
+
+pub const SCORE_INF: Score = 32000;
+pub const SCORE_MATE: Score = 31000;
+pub const SCORE_WIN: Score = 30000;
+
+pub const MAX_DEPTH: i32 = 256;
 
 #[cfg(test)]
 mod tests {

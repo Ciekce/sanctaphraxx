@@ -19,6 +19,7 @@
 use crate::ataxx_move::{AtaxxMove, MoveStrError};
 use crate::perft::{perft, split_perft};
 use crate::position::{FenError::*, Position};
+use crate::search::search_root;
 use std::str::FromStr;
 
 const NAME: &str = "Sanctaphraxx";
@@ -54,6 +55,7 @@ impl UaiHandler {
                 "uai" => self.handle_uai(),
                 "isready" => self.handle_isready(),
                 "position" => self.handle_position(&cmd[1..]),
+                "go" => self.handle_go(),
                 "d" => self.handle_d(),
                 "perft" => self.handle_perft(&cmd[1..]),
                 "splitperft" => self.handle_splitperft(&cmd[1..]),
@@ -127,6 +129,10 @@ impl UaiHandler {
                 ),
             }
         }
+    }
+
+    fn handle_go(&self) {
+        search_root(self.pos.clone(), 6);
     }
 
     fn handle_d(&self) {
