@@ -30,7 +30,9 @@ struct SearchContext<'a> {
     best_move: AtaxxMove,
 }
 
-pub fn search_root(mut pos: Position, depth: i32) {
+pub fn search_root(mut pos: Position, max_depth: i32) {
+    assert!(max_depth > 0);
+
     let mut ctx = SearchContext {
         pos: &mut pos,
         nodes: 0,
@@ -40,33 +42,29 @@ pub fn search_root(mut pos: Position, depth: i32) {
 
     let start = Instant::now();
 
-    let score = search(&mut ctx, depth, 0);
+    let mut score = -SCORE_INF;
+    let mut best_move = AtaxxMove::None;
+
+    let mut depth_completed = 0i32;
+
+    for depth in 1..=max_depth {
+        ctx.seldepth = 0;
+
+        score = search(&mut ctx, depth, 0);
+        depth_completed = depth;
+
+        best_move = ctx.best_move;
+
+        if depth < max_depth {
+            let time = start.elapsed().as_secs_f64();
+            report(&ctx, best_move, depth, time, score);
+        }
+    }
 
     let time = start.elapsed().as_secs_f64();
-    let nps = (ctx.nodes as f64 / time) as usize;
+    report(&ctx, best_move, depth_completed, time, score);
 
-    println!(
-        "info depth {} seldepth {} time {} nodes {} nps {} score {} pv {}",
-        depth,
-        ctx.seldepth,
-        (time * 1000.0) as usize,
-        ctx.nodes,
-        nps,
-        if score.abs() > SCORE_WIN {
-            format!(
-                "mate {}",
-                if score > 0 {
-                    (SCORE_MATE - score + 1) / 2
-                } else {
-                    -(SCORE_MATE + score) / 2
-                }
-            )
-        } else {
-            format!("cp {}", score)
-        },
-        ctx.best_move
-    );
-    println!("bestmove {}", ctx.best_move);
+    println!("bestmove {}", best_move);
 }
 
 fn search(ctx: &mut SearchContext, depth: i32, ply: i32) -> Score {
@@ -100,7 +98,7 @@ fn search(ctx: &mut SearchContext, depth: i32, ply: i32) -> Score {
         ctx.nodes += 1;
 
         ctx.pos.apply_move::<true, true>(m);
-        let score = search(ctx, depth - 1, ply + 1);
+        let score = -search(ctx, depth - 1, ply + 1);
         ctx.pos.pop_move::<true>();
 
         if score > best_score {
@@ -113,4 +111,30 @@ fn search(ctx: &mut SearchContext, depth: i32, ply: i32) -> Score {
     }
 
     best_score
+}
+
+fn report(ctx: &SearchContext, m: AtaxxMove, depth: i32, time: f64, score: Score) {
+    let nps = (ctx.nodes as f64 / time) as usize;
+
+    println!(
+        "info depth {} seldepth {} time {} nodes {} nps {} score {} pv {}",
+        depth,
+        ctx.seldepth,
+        (time * 1000.0) as usize,
+        ctx.nodes,
+        nps,
+        if score.abs() > SCORE_WIN {
+            format!(
+                "mate {}",
+                if score > 0 {
+                    (SCORE_MATE - score + 1) / 2
+                } else {
+                    -(SCORE_MATE + score) / 2
+                }
+            )
+        } else {
+            format!("cp {}", score)
+        },
+        ctx.best_move
+    );
 }
