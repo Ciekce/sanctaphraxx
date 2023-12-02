@@ -16,17 +16,34 @@
  * along with Sanctaphraxx. If not, see <https://www.gnu.org/licenses/>.
  */
 
-mod ataxx_move;
-mod attacks;
-mod bitboard;
-mod core;
-mod hash;
-mod movegen;
-mod perft;
-mod position;
-mod uai;
-mod util;
+use crate::ataxx_move::AtaxxMove;
+use crate::attacks::DOUBLES;
+use crate::position::Position;
 
-fn main() {
-    uai::run();
+pub type MoveList = arrayvec::ArrayVec<AtaxxMove, 256>;
+
+pub fn generate_moves(dst: &mut MoveList, pos: &Position) {
+    if pos.game_over() {
+        return;
+    }
+
+    let ours = pos.color_occupancy(pos.side_to_move());
+    let empty = pos.empty_squares();
+
+    let singles = ours.expand() & empty;
+
+    for to in singles {
+        dst.push(AtaxxMove::Single(to));
+    }
+
+    for from in ours {
+        let attacks = DOUBLES[from.bit_idx()] & empty;
+        for to in attacks {
+            dst.push(AtaxxMove::Double(from, to));
+        }
+    }
+
+    if dst.is_empty() {
+        dst.push(AtaxxMove::Null);
+    }
 }

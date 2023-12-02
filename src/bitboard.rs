@@ -17,6 +17,7 @@
  */
 
 use crate::core::*;
+use std::fmt::{Display, Formatter};
 use std::ops::*;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
@@ -41,7 +42,7 @@ impl Bitboard {
     pub const FILE_F: Self = Self::from_raw(0x20202020202020);
     pub const FILE_G: Self = Self::from_raw(0x40404040404040);
 
-    pub const ALL: Self = Self::from_raw(0xffffffffffffff);
+    pub const ALL: Self = Self::from_raw(0x7f7f7f7f7f7f7f);
     pub const EMPTY: Self = Self::from_raw(0);
 
     #[must_use]
@@ -50,27 +51,36 @@ impl Bitboard {
     }
 
     #[must_use]
-    pub fn popcount(&self) -> u32 {
+    pub const fn raw(&self) -> u64 {
+        self.value
+    }
+
+    #[must_use]
+    pub const fn popcount(&self) -> u32 {
         self.value.count_ones()
     }
 
     #[must_use]
-    pub fn is_empty(&self) -> bool {
+    pub const fn is_empty(&self) -> bool {
         self.value == 0
     }
 
     #[must_use]
-    pub fn contains_multiple(&self) -> bool {
+    pub const fn contains_multiple(&self) -> bool {
         self.value != self.value & (self.value - 1)
     }
 
     #[must_use]
-    pub fn get(&self, sq: Square) -> bool {
-        !(*self & sq.bit()).is_empty()
+    pub const fn get(&self, sq: Square) -> bool {
+        !self.and(sq.bit()).is_empty()
     }
 
     pub fn set(&mut self, sq: Square) {
         *self |= sq.bit();
+    }
+
+    pub fn clear(&mut self, sq: Square) {
+        *self &= !sq.bit();
     }
 
     pub fn flip(&mut self, sq: Square) {
@@ -79,14 +89,136 @@ impl Bitboard {
 
     pub fn set_to(&mut self, sq: Square, value: bool) {
         if value {
-            *self |= sq.bit();
+            self.set(sq);
         } else {
-            *self &= !sq.bit();
+            self.clear(sq);
         }
     }
 
     #[must_use]
-    pub fn lowest_square(&mut self) -> Square {
+    pub const fn and(&self, rhs: Bitboard) -> Self {
+        Self {
+            value: self.value & rhs.value,
+        }
+    }
+
+    #[must_use]
+    pub const fn or(&self, rhs: Bitboard) -> Self {
+        Self {
+            value: self.value | rhs.value,
+        }
+    }
+
+    #[must_use]
+    pub const fn xor(&self, rhs: Bitboard) -> Self {
+        Self {
+            value: self.value ^ rhs.value,
+        }
+    }
+
+    #[must_use]
+    pub const fn inverse(&self) -> Self {
+        Self { value: !self.value }
+    }
+
+    #[must_use]
+    pub const fn bitshift_left(&self, rhs: u32) -> Self {
+        Self {
+            value: self.value << rhs,
+        }
+    }
+
+    #[must_use]
+    pub const fn bitshift_right(&self, rhs: u32) -> Self {
+        Self {
+            value: self.value >> rhs,
+        }
+    }
+
+    #[must_use]
+    pub const fn shift_up(&self) -> Self {
+        const MASK: Bitboard = Bitboard::ALL;
+        Self {
+            value: self.value << 8,
+        }
+        .and(MASK)
+    }
+
+    #[must_use]
+    pub const fn shift_down(&self) -> Self {
+        Self {
+            value: self.value >> 8,
+        }
+    }
+
+    #[must_use]
+    pub const fn shift_left(&self) -> Self {
+        // normally in chess you would need to also mask off the H file
+        // but there is no H file in ataxx
+        const MASK: Bitboard = Bitboard::ALL;
+        Self {
+            value: self.value << 1,
+        }
+        .and(MASK)
+    }
+
+    #[must_use]
+    pub const fn shift_right(&self) -> Self {
+        // see above
+        // can't wrap anything to A if there is no H
+        const MASK: Bitboard = Bitboard::ALL;
+        Self {
+            value: self.value >> 1,
+        }
+        .and(MASK)
+    }
+
+    #[must_use]
+    pub const fn shift_up_left(&self) -> Self {
+        const MASK: Bitboard = Bitboard::ALL;
+        Self {
+            value: self.value << 7,
+        }
+        .and(MASK)
+    }
+
+    #[must_use]
+    pub const fn shift_up_right(&self) -> Self {
+        const MASK: Bitboard = Bitboard::ALL;
+        Self {
+            value: self.value << 9,
+        }
+        .and(MASK)
+    }
+
+    #[must_use]
+    pub const fn shift_down_left(&self) -> Self {
+        const MASK: Bitboard = Bitboard::ALL;
+        Self {
+            value: self.value >> 9,
+        }
+        .and(MASK)
+    }
+
+    #[must_use]
+    pub const fn shift_down_right(&self) -> Self {
+        const MASK: Bitboard = Bitboard::ALL;
+        Self {
+            value: self.value >> 7,
+        }
+        .and(MASK)
+    }
+
+    #[must_use]
+    pub const fn expand(&self) -> Self {
+        let board = self.or(self.shift_up().or(self.shift_down()));
+        board
+            .or(board.shift_left().or(board.shift_right()))
+            .and(Bitboard::ALL)
+    }
+
+    #[must_use]
+    pub const fn lowest_square(&self) -> Square {
         Square::from_raw(self.value.trailing_zeros() as u8)
     }
 
@@ -101,6 +233,7 @@ impl IntoIterator for Bitboard {
     type Item = Square;
     type IntoIter = Biterator;
 
+    #[must_use]
     fn into_iter(self) -> Self::IntoIter {
         Biterator { board: self }
     }
@@ -111,9 +244,7 @@ impl BitAnd for Bitboard {
 
     #[must_use]
     fn bitand(self, rhs: Self) -> Self::Output {
-        Self {
-            value: self.value & rhs.value,
-        }
+        self.and(rhs)
     }
 }
 
@@ -128,9 +259,7 @@ impl BitOr for Bitboard {
 
     #[must_use]
     fn bitor(self, rhs: Self) -> Self::Output {
-        Self {
-            value: self.value | rhs.value,
-        }
+        self.or(rhs)
     }
 }
 
@@ -145,9 +274,7 @@ impl BitXor for Bitboard {
 
     #[must_use]
     fn bitxor(self, rhs: Self) -> Self::Output {
-        Self {
-            value: self.value ^ rhs.value,
-        }
+        self.xor(rhs)
     }
 }
 
@@ -162,7 +289,7 @@ impl Not for Bitboard {
 
     #[must_use]
     fn not(self) -> Self::Output {
-        Self { value: !self.value }
+        self.inverse()
     }
 }
 
@@ -171,9 +298,7 @@ impl Shr<u32> for Bitboard {
 
     #[must_use]
     fn shr(self, rhs: u32) -> Self::Output {
-        Self {
-            value: self.value >> rhs,
-        }
+        self.bitshift_right(rhs)
     }
 }
 
@@ -188,15 +313,41 @@ impl Shl<u32> for Bitboard {
 
     #[must_use]
     fn shl(self, rhs: u32) -> Self::Output {
-        Self {
-            value: self.value << rhs,
-        }
+        self.bitshift_left(rhs)
     }
 }
 
 impl ShlAssign<u32> for Bitboard {
     fn shl_assign(&mut self, rhs: u32) {
         self.value <<= rhs;
+    }
+}
+
+impl Display for Bitboard {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        for rank in (0u32..7).rev() {
+            for file in 0u32..7 {
+                if file > 0 {
+                    write!(f, " ")?;
+                }
+
+                write!(
+                    f,
+                    "{}",
+                    if self.get(Square::from_coords(rank, file)) {
+                        '1'
+                    } else {
+                        '0'
+                    }
+                )?;
+            }
+
+            if rank > 0 {
+                writeln!(f)?;
+            }
+        }
+
+        Ok(())
     }
 }
 

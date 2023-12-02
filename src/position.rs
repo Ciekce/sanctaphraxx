@@ -16,14 +16,19 @@
  * along with Sanctaphraxx. If not, see <https://www.gnu.org/licenses/>.
  */
 
+use crate::ataxx_move::AtaxxMove;
+use crate::ataxx_move::AtaxxMove::*;
+use crate::attacks::SINGLES;
 use crate::bitboard::Bitboard;
 use crate::core::{Color, Square};
 use crate::hash;
+use std::fmt::{Display, Formatter};
 
+#[derive(Debug, Clone)]
 struct BoardState {
     colors: [Bitboard; 2],
-    gaps: Bitboard,
     key: u64,
+    last_move: AtaxxMove,
     halfmove: u16,
 }
 
@@ -55,8 +60,8 @@ impl BoardState {
     }
 
     #[must_use]
-    pub fn gap_at(&self, sq: Square) -> bool {
-        self.gaps.get(sq)
+    pub fn empty_squares(&self, gaps: Bitboard) -> Bitboard {
+        !(self.occupancy() | gaps) & Bitboard::ALL
     }
 }
 
@@ -65,16 +70,18 @@ impl Default for BoardState {
     fn default() -> Self {
         BoardState {
             colors: [Bitboard::EMPTY, Bitboard::EMPTY],
-            gaps: Bitboard::EMPTY,
             key: 0,
+            last_move: AtaxxMove::Null,
             halfmove: 0,
         }
     }
 }
 
+#[derive(Debug)]
 pub struct Position {
     blue_to_move: bool,
     fullmove: u32,
+    gaps: Bitboard,
     states: Vec<BoardState>,
     hashes: Vec<u64>,
 }
@@ -98,6 +105,7 @@ impl Position {
         Self {
             blue_to_move: false,
             fullmove: 0,
+            gaps: Bitboard::EMPTY,
             states: Vec::with_capacity(256),
             hashes: Vec::with_capacity(512),
         }
@@ -123,15 +131,15 @@ impl Position {
                 Bitboard::from_raw(0x01000000000040),
                 Bitboard::from_raw(0x40000000000001),
             ],
-            gaps: Bitboard::EMPTY,
             key: 0,
+            last_move: AtaxxMove::Null,
             halfmove: 0,
         });
 
         self.blue_to_move = false;
         self.fullmove = 1;
 
-        self.regen_key();
+        self.regen_curr_key();
     }
 
     pub fn reset_from_fen_parts(&mut self, parts: &[&str]) -> Result<(), FenError> {
@@ -148,6 +156,7 @@ impl Position {
         }
 
         let mut state = BoardState::default();
+        let mut gaps = Bitboard::EMPTY;
 
         for (rank_idx, rank) in ranks.iter().enumerate() {
             let mut file_idx: u32 = 0;
@@ -166,7 +175,7 @@ impl Position {
                         state.colors[color.idx()].set(sq);
                         file_idx += 1;
                     } else if c == '-' {
-                        state.gaps.set(sq);
+                        gaps.set(sq);
                         file_idx += 1;
                     } else {
                         return Err(FenError::InvalidChar(c));
@@ -205,13 +214,14 @@ impl Position {
 
         self.blue_to_move = blue_to_move;
         self.fullmove = fullmove;
+        self.gaps = gaps;
 
         self.states.clear();
         self.states.push(state);
 
         self.hashes.clear();
 
-        self.regen_key();
+        self.regen_curr_key();
 
         Ok(())
     }
@@ -221,7 +231,7 @@ impl Position {
         self.reset_from_fen_parts(parts.as_slice())
     }
 
-    fn regen_key(&mut self) {
+    fn regen_curr_key(&mut self) {
         let blue_to_move = self.blue_to_move;
         let state = self.curr_state_mut();
 
@@ -251,7 +261,95 @@ impl Position {
     }
 
     #[must_use]
-    pub fn to_move(&self) -> Color {
+    pub fn game_over(&self) -> bool {
+        let state = self.curr_state();
+        state.red_occupancy().is_empty()
+            || state.blue_occupancy().is_empty()
+            || state.occupancy() == Bitboard::ALL
+            || state.halfmove >= 100
+            || (state.occupancy().expand().expand() & state.empty_squares(self.gaps)).is_empty()
+    }
+
+    pub fn apply_move<const HISTORY: bool, const UPDATE_KEY: bool>(&mut self, m: AtaxxMove) {
+        let us = self.side_to_move();
+        let them = us.flip();
+
+        self.blue_to_move = !self.blue_to_move;
+
+        let mut new_state = self.curr_state().clone();
+        self.curr_state_mut().last_move = m;
+
+        if UPDATE_KEY {
+            self.hashes.push(new_state.key);
+            new_state.key ^= hash::stm_key();
+        }
+
+        if us == Color::BLUE {
+            self.fullmove += 1;
+        }
+
+        let (from, to) = match m {
+            Single(to) => {
+                new_state.halfmove = 0;
+                (to, to)
+            }
+            Double(from, to) => {
+                new_state.halfmove += 1;
+                (from, to)
+            }
+            _ => {
+                self.states.push(new_state);
+                return;
+            }
+        };
+
+        let mut ours = new_state.colors[us.idx()];
+        let mut theirs = new_state.colors[them.idx()];
+
+        ours ^= from.bit() | to.bit();
+
+        let captured = SINGLES[to.bit_idx()] & theirs;
+
+        ours ^= captured;
+        theirs ^= captured;
+
+        new_state.colors[us.idx()] = ours;
+        new_state.colors[them.idx()] = theirs;
+
+        if UPDATE_KEY {
+            new_state.key ^= hash::color_square_key(us, from);
+            new_state.key ^= hash::color_square_key(us, to);
+
+            for sq in captured {
+                new_state.key ^= hash::color_square_key(them, sq);
+            }
+        }
+
+        if HISTORY {
+            self.states.push(new_state);
+        } else {
+            *self.curr_state_mut() = new_state;
+        }
+    }
+
+    pub fn pop_move<const UPDATE_KEY: bool>(&mut self) {
+        debug_assert!(self.states.len() > 1);
+
+        let m = self.states.pop().unwrap().last_move;
+
+        if UPDATE_KEY {
+            self.hashes.pop();
+        }
+
+        self.blue_to_move = !self.blue_to_move;
+
+        if m != AtaxxMove::Null && self.blue_to_move {
+            self.fullmove -= 1;
+        }
+    }
+
+    #[must_use]
+    pub fn side_to_move(&self) -> Color {
         if self.blue_to_move {
             Color::BLUE
         } else {
@@ -260,8 +358,38 @@ impl Position {
     }
 
     #[must_use]
+    pub fn occupancy(&self) -> Bitboard {
+        self.curr_state().occupancy()
+    }
+
+    #[must_use]
+    pub fn empty_squares(&self) -> Bitboard {
+        self.curr_state().empty_squares(self.gaps)
+    }
+
+    #[must_use]
+    pub fn red_occupancy(&self) -> Bitboard {
+        self.curr_state().red_occupancy()
+    }
+
+    #[must_use]
+    pub fn blue_occupancy(&self) -> Bitboard {
+        self.curr_state().blue_occupancy()
+    }
+
+    #[must_use]
+    pub fn color_occupancy(&self, color: Color) -> Bitboard {
+        self.curr_state().colors[color.idx()]
+    }
+
+    #[must_use]
     pub fn color_at(&self, sq: Square) -> Color {
         self.curr_state().color_at(sq)
+    }
+
+    #[must_use]
+    pub fn gap_at(&self, sq: Square) -> bool {
+        self.gaps.get(sq)
     }
 
     #[must_use]
@@ -285,7 +413,7 @@ impl Position {
                     Color::RED => fen.push('x'),
                     Color::BLUE => fen.push('o'),
                     Color::NONE => {
-                        if state.gap_at(sq) {
+                        if self.gap_at(sq) {
                             fen.push('-');
                         } else {
                             let mut empty_squares: u32 = 1;
@@ -314,10 +442,47 @@ impl Position {
 
         fen + format!(
             " {} {} {}",
-            self.to_move().to_char(),
+            self.side_to_move().to_char(),
             state.halfmove,
             self.fullmove
         )
         .as_str()
+    }
+}
+
+impl Display for Position {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        for rank in (0u32..7).rev() {
+            writeln!(f, " +---+---+---+---+---+---+---+")?;
+
+            for file in 0u32..7 {
+                let sq = Square::from_coords(rank, file);
+                write!(
+                    f,
+                    " | {}",
+                    if self.gap_at(sq) {
+                        '-'
+                    } else {
+                        self.color_at(sq).to_char()
+                    }
+                )?;
+            }
+
+            writeln!(f, " | {}", rank + 1)?;
+        }
+
+        writeln!(f, " +---+---+---+---+---+---+---+")?;
+        writeln!(f, "   a   b   c   d   e   f   g")?;
+        writeln!(f)?;
+
+        write!(
+            f,
+            "{} to move",
+            if self.side_to_move() == Color::RED {
+                "Red"
+            } else {
+                "Blue"
+            }
+        )
     }
 }

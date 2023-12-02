@@ -17,6 +17,8 @@
  */
 
 use crate::bitboard::Bitboard;
+use std::fmt::{Display, Formatter};
+use std::str::FromStr;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct Square(u8);
@@ -77,52 +79,95 @@ impl Square {
     pub const N_SQUARES: usize = 49;
 
     #[must_use]
-    pub fn from_raw(value: u8) -> Self {
+    pub const fn from_raw(value: u8) -> Self {
         debug_assert!(value == 64 || value / 8 < 7);
         debug_assert!(value == 64 || value % 8 < 7);
         Self(value)
     }
 
     #[must_use]
-    pub fn from_coords(rank: u32, file: u32) -> Self {
+    pub const fn from_coords(rank: u32, file: u32) -> Self {
         debug_assert!(rank < 7);
         debug_assert!(file < 7);
         Self((rank * 8 + file) as u8)
     }
 
     #[must_use]
-    pub fn idx(&self) -> usize {
+    pub const fn idx(&self) -> usize {
         (self.rank() * 7 + self.file()) as usize
     }
 
     #[must_use]
-    pub fn bit_idx(&self) -> usize {
+    pub const fn bit_idx(&self) -> usize {
         self.0 as usize
     }
 
     #[must_use]
-    pub fn bit(&self) -> Bitboard {
+    pub const fn bit(&self) -> Bitboard {
         Bitboard::from_raw(1 << self.bit_idx())
     }
 
     #[must_use]
-    pub fn rank(&self) -> u32 {
+    pub const fn rank(&self) -> u32 {
         self.0 as u32 / 8
     }
 
     #[must_use]
-    pub fn file(&self) -> u32 {
+    pub const fn file(&self) -> u32 {
         self.0 as u32 % 8
     }
 
     #[must_use]
-    pub fn flip_horizontal(&self) -> Self {
+    pub const fn flip_horizontal(&self) -> Self {
         Self::from_coords(self.rank(), 6 - self.file())
     }
 
     #[must_use]
-    pub fn flip_vertical(&self) -> Self {
+    pub const fn flip_vertical(&self) -> Self {
         Self::from_coords(6 - self.rank(), self.file())
+    }
+}
+
+pub enum SquareStrError {
+    WrongSize,
+    InvalidFile,
+    InvalidRank,
+}
+
+impl FromStr for Square {
+    type Err = SquareStrError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s.len() != 2 {
+            return Err(SquareStrError::WrongSize);
+        }
+
+        let mut chars = s.chars();
+
+        let file = chars.next().unwrap();
+        let rank = chars.next().unwrap();
+
+        if !('a'..='g').contains(&file) {
+            return Err(SquareStrError::InvalidFile);
+        } else if !('1'..='7').contains(&rank) {
+            return Err(SquareStrError::InvalidRank);
+        }
+
+        let file_idx = file as u32 - 'a' as u32;
+        let rank_idx = rank as u32 - '1' as u32;
+
+        Ok(Self::from_coords(rank_idx, file_idx))
+    }
+}
+
+impl Display for Square {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}{}",
+            char::from_u32(self.file() + 'a' as u32).unwrap(),
+            char::from_u32(self.rank() + '1' as u32).unwrap()
+        )
     }
 }
 
@@ -154,8 +199,8 @@ impl Color {
     }
 
     #[must_use]
-    pub fn to_char(&self) -> char {
-        match *self {
+    pub fn to_char(self) -> char {
+        match self {
             Color::RED => 'x',
             Color::BLUE => 'o',
             Color::NONE => ' ',
@@ -165,11 +210,26 @@ impl Color {
 
     #[must_use]
     pub fn flip(&self) -> Self {
-        Self::from_raw(!self.value)
+        debug_assert!(*self != Self::NONE);
+        Self::from_raw(self.value ^ 1)
     }
 
     #[must_use]
     pub fn idx(&self) -> usize {
         self.value as usize
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::core::Color;
+
+    #[test]
+    fn square_flip() {
+        assert_eq!(Color::RED.flip(), Color::BLUE);
+        assert_eq!(Color::BLUE.flip(), Color::RED);
+
+        assert_eq!(Color::RED.flip().flip(), Color::RED);
+        assert_eq!(Color::BLUE.flip().flip(), Color::BLUE);
     }
 }
