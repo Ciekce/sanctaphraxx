@@ -16,6 +16,10 @@
  * along with Sanctaphraxx. If not, see <https://www.gnu.org/licenses/>.
  */
 
+use crate::bench::{run_bench, DEFAULT_BENCH_DEPTH};
+use crate::search::Searcher;
+use std::env;
+
 mod ataxx_move;
 mod attacks;
 mod bench;
@@ -32,5 +36,12 @@ mod uai;
 mod util;
 
 fn main() {
+    let args: Vec<String> = env::args().collect();
+    if args.len() > 1 && args[1].as_str() == "bench" {
+        let mut searcher = Searcher::new();
+        run_bench(&mut searcher, DEFAULT_BENCH_DEPTH);
+        return;
+    }
+
     uai::run();
 }
