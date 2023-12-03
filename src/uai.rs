@@ -22,8 +22,9 @@ use crate::core::{Color, MAX_DEPTH};
 use crate::eval::static_eval;
 use crate::limit::SearchLimiter;
 use crate::perft::{perft, split_perft};
-use crate::position::{FenError::*, Position};
+use crate::position::Position;
 use crate::search::Searcher;
+use crate::ttable::TTable;
 use std::str::FromStr;
 
 const NAME: &str = "Sanctaphraxx";
@@ -59,6 +60,8 @@ impl UaiHandler {
 
             match cmd[0] {
                 "uai" => self.handle_uai(),
+                "uainewgame" => self.handle_uainewgame(),
+                "setoption" => self.handle_setoption(&cmd[1..]),
                 "isready" => self.handle_isready(),
                 "position" => self.handle_position(&cmd[1..]),
                 "go" => self.handle_go(&cmd[1..]),
@@ -77,8 +80,49 @@ impl UaiHandler {
     fn handle_uai(&self) {
         println!("id name {} {}", NAME, VERSION);
         println!("id author {}", AUTHORS.replace(':', ", "));
-        //TODO options
+        println!(
+            "option name Hash type spin default {} min {} max {}",
+            TTable::DEFAULT_SIZE_MB,
+            TTable::MIN_SIZE_MB,
+            TTable::MAX_SIZE_MB
+        );
         println!("uaiok");
+    }
+
+    fn handle_uainewgame(&mut self) {
+        self.searcher.new_game();
+    }
+
+    fn handle_setoption(&mut self, args: &[&str]) {
+        if args.len() < 2 || args[0] != "name" {
+            eprintln!("Missing name");
+            return;
+        }
+
+        let mut idx = 1usize;
+        while idx < args.len() && args[idx] != "value" {
+            idx += 1;
+        }
+
+        if idx > args.len() - 2 || args[idx] != "value" {
+            eprintln!("Missing value");
+            return;
+        }
+
+        let name = args[1usize..idx].join(" ");
+        let value = args[(idx + 1)..].join(" ");
+
+        match name.as_str() {
+            "Hash" => {
+                if let Ok(new_size) = value.parse::<usize>() {
+                    self.searcher.resize_tt(new_size);
+                } else {
+                    eprintln!("Invalid hash size");
+                    return;
+                }
+            }
+            _ => {}
+        }
     }
 
     fn handle_isready(&self) {
