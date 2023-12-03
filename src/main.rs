@@ -32,6 +32,7 @@ mod movegen;
 mod perft;
 mod position;
 mod search;
+mod ttable;
 mod uai;
 mod util;
 

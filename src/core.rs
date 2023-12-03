@@ -226,7 +226,7 @@ pub const SCORE_INF: Score = 32000;
 pub const SCORE_MATE: Score = 31000;
 pub const SCORE_WIN: Score = 30000;
 
-pub const MAX_DEPTH: i32 = 256;
+pub const MAX_DEPTH: i32 = 255;
 
 #[cfg(test)]
 mod tests {

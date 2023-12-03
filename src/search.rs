@@ -22,6 +22,7 @@ use crate::eval::static_eval;
 use crate::limit::SearchLimiter;
 use crate::movegen::{generate_moves, MoveList};
 use crate::position::{GameResult, Position};
+use crate::ttable::{TTable, TtEntry, TtEntryFlag};
 use std::time::Instant;
 
 pub struct SearchContext<'a> {
@@ -33,13 +34,19 @@ pub struct SearchContext<'a> {
 
 pub struct Searcher {
     limiter: SearchLimiter,
+    ttable: TTable,
 }
 
 impl Searcher {
     pub fn new() -> Self {
         Self {
             limiter: SearchLimiter::infinite(),
+            ttable: TTable::new(),
         }
+    }
+
+    pub fn new_game(&mut self) {
+        self.ttable.clear();
     }
 
     pub fn start_search(&mut self, mut pos: Position, limiter: SearchLimiter, max_depth: i32) {
@@ -99,7 +106,7 @@ impl Searcher {
 
             if report && depth < max_depth {
                 let time = start.elapsed().as_secs_f64();
-                Self::report(&ctx, best_move, depth, time, score);
+                Self::report(ctx, best_move, depth, time, score);
             }
 
             if self.limiter.should_stop(ctx.nodes) {
@@ -109,7 +116,7 @@ impl Searcher {
 
         if report {
             let time = start.elapsed().as_secs_f64();
-            Self::report(&ctx, best_move, depth_completed, time, score);
+            Self::report(ctx, best_move, depth_completed, time, score);
 
             println!("bestmove {}", best_move);
         }
@@ -136,6 +143,21 @@ impl Searcher {
         let is_root = ply == 0;
         let is_pv = beta - alpha > 1;
 
+        if !is_pv {
+            if let Some(tt_entry) = self.ttable.probe(ctx.pos.key()) {
+                if tt_entry.depth as i32 >= depth
+                    && match tt_entry.flag {
+                        TtEntryFlag::Exact => true,
+                        TtEntryFlag::Alpha => tt_entry.score as i32 <= alpha,
+                        TtEntryFlag::Beta => tt_entry.score as i32 >= beta,
+                        _ => unreachable!(),
+                    }
+                {
+                    return tt_entry.score as i32;
+                }
+            }
+        }
+
         let mut moves = MoveList::new();
         generate_moves(&mut moves, ctx.pos);
 
@@ -153,6 +175,7 @@ impl Searcher {
         }
 
         let mut best_score: Score = -SCORE_INF;
+        let mut entry_flag = TtEntryFlag::Alpha;
 
         for (move_idx, &m) in moves.iter().enumerate() {
             ctx.nodes += 1;
@@ -181,12 +204,19 @@ impl Searcher {
                     }
 
                     if score >= beta {
+                        entry_flag = TtEntryFlag::Beta;
                         break;
                     }
 
                     alpha = score;
+                    entry_flag = TtEntryFlag::Exact;
                 }
             }
+        }
+
+        if !self.limiter.stopped() {
+            self.ttable
+                .store(ctx.pos.key(), best_score, depth, entry_flag);
         }
 
         best_score

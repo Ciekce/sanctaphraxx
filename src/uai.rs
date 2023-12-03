@@ -22,7 +22,7 @@ use crate::core::{Color, MAX_DEPTH};
 use crate::eval::static_eval;
 use crate::limit::SearchLimiter;
 use crate::perft::{perft, split_perft};
-use crate::position::{FenError::*, Position};
+use crate::position::Position;
 use crate::search::Searcher;
 use std::str::FromStr;
 
@@ -59,6 +59,7 @@ impl UaiHandler {
 
             match cmd[0] {
                 "uai" => self.handle_uai(),
+                "uainewgame" => self.handle_uainewgame(),
                 "isready" => self.handle_isready(),
                 "position" => self.handle_position(&cmd[1..]),
                 "go" => self.handle_go(&cmd[1..]),
@@ -79,6 +80,10 @@ impl UaiHandler {
         println!("id author {}", AUTHORS.replace(':', ", "));
         //TODO options
         println!("uaiok");
+    }
+
+    fn handle_uainewgame(&mut self) {
+        self.searcher.new_game();
     }
 
     fn handle_isready(&self) {
