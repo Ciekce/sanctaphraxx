@@ -19,7 +19,7 @@
 use crate::position::Position;
 use crate::search::Searcher;
 
-pub const DEFAULT_BENCH_DEPTH: i32 = 9;
+pub const DEFAULT_BENCH_DEPTH: i32 = 8;
 
 const BENCH_FENS: &[&str] = &[
     "x-1-1-o/-1-1-1-/1-1-1-1/-1-1-1-/1-1-1-1/-1-1-1-/o-1-1-x x 0 1",
