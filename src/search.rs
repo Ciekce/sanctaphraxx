@@ -134,6 +134,7 @@ impl Searcher {
         }
 
         let is_root = ply == 0;
+        let is_pv = beta - alpha > 1;
 
         let mut moves = MoveList::new();
         generate_moves(&mut moves, ctx.pos);
@@ -153,11 +154,22 @@ impl Searcher {
 
         let mut best_score: Score = -SCORE_INF;
 
-        for m in moves {
+        for (move_idx, &m) in moves.iter().enumerate() {
             ctx.nodes += 1;
 
             ctx.pos.apply_move::<true, true>(m);
-            let score = -self.search(ctx, -beta, -alpha, depth - 1, ply + 1);
+
+            let score = if is_pv && move_idx == 0 {
+                -self.search(ctx, -beta, -alpha, depth - 1, ply + 1)
+            } else {
+                let zw_score = -self.search(ctx, -alpha - 1, -alpha, depth - 1, ply + 1);
+                if zw_score > alpha && zw_score < beta {
+                    -self.search(ctx, -beta, -alpha, depth - 1, ply + 1)
+                } else {
+                    zw_score
+                }
+            };
+
             ctx.pos.pop_move::<true>();
 
             if score > best_score {
