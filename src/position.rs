@@ -356,10 +356,14 @@ impl Position {
         new_state.colors[them.idx()] = theirs;
 
         if UPDATE_KEY {
-            new_state.key ^= hash::color_square_key(us, from);
             new_state.key ^= hash::color_square_key(us, to);
 
+            if from != to {
+                new_state.key ^= hash::color_square_key(us, from);
+            }
+
             for sq in captured {
+                new_state.key ^= hash::color_square_key(us, sq);
                 new_state.key ^= hash::color_square_key(them, sq);
             }
         }
@@ -523,5 +527,64 @@ impl Display for Position {
                 "Blue"
             }
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::ataxx_move::AtaxxMove;
+    use crate::core::Square;
+    use crate::position::Position;
+
+    #[test]
+    fn noncapture_single_key() {
+        let mut pos = Position::startpos();
+        pos.apply_move::<false, true>(AtaxxMove::Single(Square::B6));
+
+        let incr_key = pos.key();
+
+        pos.regen_curr_key();
+        let regen_key = pos.key();
+
+        assert_eq!(incr_key, regen_key);
+    }
+
+    #[test]
+    fn noncapture_double_key() {
+        let mut pos = Position::startpos();
+        pos.apply_move::<false, true>(AtaxxMove::Double(Square::A7, Square::C5));
+
+        let incr_key = pos.key();
+
+        pos.regen_curr_key();
+        let regen_key = pos.key();
+
+        assert_eq!(incr_key, regen_key);
+    }
+
+    #[test]
+    fn capture_single_key() {
+        let mut pos = Position::from_fen("x5o/2o4/7/7/7/7/o5x x 0 1").unwrap();
+        pos.apply_move::<false, true>(AtaxxMove::Single(Square::B6));
+
+        let incr_key = pos.key();
+
+        pos.regen_curr_key();
+        let regen_key = pos.key();
+
+        assert_eq!(incr_key, regen_key);
+    }
+
+    #[test]
+    fn capture_double_key() {
+        let mut pos = Position::from_fen("x5o/2o4/7/7/7/7/o5x x 0 1").unwrap();
+        pos.apply_move::<false, true>(AtaxxMove::Double(Square::A7, Square::C5));
+
+        let incr_key = pos.key();
+
+        pos.regen_curr_key();
+        let regen_key = pos.key();
+
+        assert_eq!(incr_key, regen_key);
     }
 }
