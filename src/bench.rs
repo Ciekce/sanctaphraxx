@@ -20,6 +20,7 @@ use crate::position::Position;
 use crate::search::Searcher;
 
 pub const DEFAULT_BENCH_DEPTH: i32 = 7;
+pub const BENCH_TT_SIZE: usize = 16;
 
 const BENCH_FENS: &[&str] = &[
     "x-1-1-o/-1-1-1-/1-1-1-1/-1-1-1-/1-1-1-1/-1-1-1-/o-1-1-x x 0 1",
@@ -75,6 +76,9 @@ const BENCH_FENS: &[&str] = &[
 ];
 
 pub fn run_bench(searcher: &mut Searcher, depth: i32) {
+    searcher.resize_tt(BENCH_TT_SIZE);
+    println!("set TT size to {} MB", BENCH_TT_SIZE);
+
     let mut total_nodes = 0usize;
     let mut total_time = 0f64;
 

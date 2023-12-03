@@ -22,7 +22,7 @@ use crate::eval::static_eval;
 use crate::limit::SearchLimiter;
 use crate::movegen::{generate_moves, MoveList};
 use crate::position::{GameResult, Position};
-use crate::ttable::{TTable, TtEntry, TtEntryFlag};
+use crate::ttable::{TTable, TtEntryFlag};
 use std::time::Instant;
 
 pub struct SearchContext<'a> {
@@ -47,6 +47,10 @@ impl Searcher {
 
     pub fn new_game(&mut self) {
         self.ttable.clear();
+    }
+
+    pub fn resize_tt(&mut self, mb: usize) {
+        self.ttable.resize(mb);
     }
 
     pub fn start_search(&mut self, mut pos: Position, limiter: SearchLimiter, max_depth: i32) {
