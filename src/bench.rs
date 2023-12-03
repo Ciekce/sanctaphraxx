@@ -86,6 +86,8 @@ pub fn run_bench(searcher: &mut Searcher, depth: i32) {
             eprintln!("{}", err);
         }
 
+        searcher.new_game();
+
         let (nodes, time) = searcher.bench(&mut pos, depth);
 
         total_nodes += nodes;
