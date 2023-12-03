@@ -17,6 +17,9 @@
  */
 
 use crate::ataxx_move::{AtaxxMove, MoveStrError};
+use crate::core::{Color, MAX_DEPTH};
+use crate::eval::static_eval;
+use crate::limit::SearchLimiter;
 use crate::perft::{perft, split_perft};
 use crate::position::{FenError::*, Position};
 use crate::search::search_root;
@@ -55,7 +58,7 @@ impl UaiHandler {
                 "uai" => self.handle_uai(),
                 "isready" => self.handle_isready(),
                 "position" => self.handle_position(&cmd[1..]),
-                "go" => self.handle_go(),
+                "go" => self.handle_go(&cmd[1..]),
                 "d" => self.handle_d(),
                 "perft" => self.handle_perft(&cmd[1..]),
                 "splitperft" => self.handle_splitperft(&cmd[1..]),
@@ -131,8 +134,138 @@ impl UaiHandler {
         }
     }
 
-    fn handle_go(&self) {
-        search_root(self.pos.clone(), 6);
+    fn handle_go(&self, args: &[&str]) {
+        let mut limiter: Option<SearchLimiter> = None;
+        let mut depth = MAX_DEPTH;
+
+        let mut tournament_time = false;
+
+        let mut red_time = 0u64;
+        let mut blue_time = 0u64;
+        let mut red_inc = 0u64;
+        let mut blue_inc = 0u64;
+
+        let mut moves_to_go = 0u64;
+
+        let mut i = 0usize;
+        while i < args.len() {
+            match args[i] {
+                "infinite" => {
+                    if tournament_time || limiter.is_some() {
+                        eprintln!("Multiple non-depth search limits not supported");
+                        return;
+                    }
+
+                    limiter = Some(SearchLimiter::infinite());
+                }
+                "depth" => {
+                    i += 1;
+                    if i >= args.len() {
+                        eprintln!("Missing depth");
+                        return;
+                    }
+
+                    depth = if let Ok(depth) = args[i].parse::<i32>() {
+                        depth
+                    } else {
+                        eprintln!("Invalid depth '{}'", args[i]);
+                        return;
+                    }
+                }
+                "nodes" => {
+                    if tournament_time || limiter.is_some() {
+                        eprintln!("Multiple non-depth search limits not supported");
+                        return;
+                    }
+
+                    i += 1;
+                    if i >= args.len() {
+                        eprintln!("Missing node count");
+                        return;
+                    }
+
+                    if let Ok(node_limit) = args[i].parse::<usize>() {
+                        limiter = Some(SearchLimiter::fixed_nodes(node_limit));
+                    } else {
+                        eprintln!("Invalid node limit '{}'", args[i]);
+                        return;
+                    }
+                }
+                "movetime" => {
+                    if tournament_time || limiter.is_some() {
+                        eprintln!("Multiple non-depth search limits not supported");
+                        return;
+                    }
+
+                    i += 1;
+                    if i >= args.len() {
+                        eprintln!("Missing move time");
+                        return;
+                    }
+
+                    if let Ok(time_limit) = args[i].parse::<u64>() {
+                        limiter = Some(SearchLimiter::move_time(time_limit));
+                    } else {
+                        eprintln!("Invalid move time '{}'", args[i]);
+                        return;
+                    }
+                }
+                "wtime" | "btime" | "winc" | "binc" | "movestogo" => {
+                    if limiter.is_some() {
+                        eprintln!("Multiple non-depth search limits not supported");
+                        return;
+                    }
+
+                    tournament_time = true;
+
+                    let token = args[i];
+
+                    i += 1;
+                    if i >= args.len() {
+                        eprintln!("Missing {}", token);
+                        return;
+                    }
+
+                    let value = if let Ok(value) = args[i].parse::<u64>() {
+                        value
+                    } else {
+                        eprintln!("Invalid {} '{}'", token, args[i]);
+                        return;
+                    };
+
+                    match token {
+                        "wtime" => blue_time = value,
+                        "btime" => red_time = value,
+                        "winc" => blue_inc = value,
+                        "binc" => red_inc = value,
+                        "movestogo" => moves_to_go = value,
+                        _ => unreachable!(),
+                    }
+                }
+                unknown => {
+                    eprintln!("Unknown search limit '{}'", unknown);
+                    return;
+                }
+            }
+
+            i += 1;
+        }
+
+        if tournament_time {
+            assert!(limiter.is_none());
+
+            let (our_time, our_inc) = match self.pos.side_to_move() {
+                Color::RED => (red_time, red_inc),
+                Color::BLUE => (blue_time, blue_inc),
+                _ => unreachable!(),
+            };
+
+            limiter = Some(SearchLimiter::tournament(our_time, our_inc, moves_to_go));
+        } else if limiter.is_none() {
+            limiter = Some(SearchLimiter::infinite());
+        }
+
+        search_root(self.pos.clone(), &mut limiter.unwrap(), depth);
     }
 
     fn handle_d(&self) {
@@ -140,6 +273,7 @@ impl UaiHandler {
         println!();
         println!("Fen: {}", self.pos.to_fen());
         println!("Key: {:16x}", self.pos.key());
+        println!("Static eval: {}", static_eval(&self.pos));
     }
 
     fn handle_perft(&mut self, args: &[&str]) {

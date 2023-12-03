@@ -19,22 +19,25 @@
 use crate::ataxx_move::AtaxxMove;
 use crate::core::{Score, MAX_DEPTH, SCORE_INF, SCORE_MATE, SCORE_WIN};
 use crate::eval::static_eval;
+use crate::limit::SearchLimiter;
 use crate::movegen::{generate_moves, MoveList};
 use crate::position::{GameResult, Position};
 use std::time::Instant;
 
-struct SearchContext<'a> {
+pub struct SearchContext<'a> {
     pos: &'a mut Position,
+    limiter: &'a mut SearchLimiter,
     nodes: usize,
     seldepth: u32,
     best_move: AtaxxMove,
 }
 
-pub fn search_root(mut pos: Position, max_depth: i32) {
+pub fn search_root(mut pos: Position, limiter: &mut SearchLimiter, max_depth: i32) {
     assert!(max_depth > 0);
 
     let mut ctx = SearchContext {
         pos: &mut pos,
+        limiter,
         nodes: 0,
         seldepth: 0,
         best_move: AtaxxMove::None,
@@ -51,13 +54,21 @@ pub fn search_root(mut pos: Position, max_depth: i32) {
         ctx.seldepth = 0;
 
         score = search(&mut ctx, depth, 0);
-        depth_completed = depth;
 
+        if ctx.limiter.stopped() {
+            break;
+        }
+
+        depth_completed = depth;
         best_move = ctx.best_move;
 
         if depth < max_depth {
             let time = start.elapsed().as_secs_f64();
             report(&ctx, best_move, depth, time, score);
+        }
+
+        if ctx.limiter.should_stop(ctx.nodes) {
+            break;
         }
     }
 
@@ -68,13 +79,17 @@ pub fn search_root(mut pos: Position, max_depth: i32) {
 }
 
 fn search(ctx: &mut SearchContext, depth: i32, ply: i32) -> Score {
+    if depth > 1 && ctx.limiter.should_stop(ctx.nodes) {
+        return 0;
+    }
+
     ctx.seldepth = ctx.seldepth.max(ply as u32);
 
     if depth <= 0 || ply >= MAX_DEPTH {
         return static_eval(ctx.pos);
     }
 
-    let root = ply == 0;
+    let is_root = ply == 0;
 
     let mut moves = MoveList::new();
     generate_moves(&mut moves, ctx.pos);
@@ -102,7 +117,7 @@ fn search(ctx: &mut SearchContext, depth: i32, ply: i32) -> Score {
         ctx.pos.pop_move::<true>();
 
         if score > best_score {
-            if root {
+            if is_root {
                 ctx.best_move = m;
             }
 
@@ -135,6 +150,6 @@ fn report(ctx: &SearchContext, m: AtaxxMove, depth: i32, time: f64, score: Score
         } else {
             format!("cp {}", score)
         },
-        ctx.best_move
+        m
     );
 }

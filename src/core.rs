@@ -18,7 +18,6 @@
 
 use crate::bitboard::Bitboard;
 use std::fmt::{Display, Formatter};
-use std::ops::*;
 use std::str::FromStr;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]

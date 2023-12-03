@@ -22,6 +22,7 @@ mod bitboard;
 mod core;
 mod eval;
 mod hash;
+mod limit;
 mod movegen;
 mod perft;
 mod position;
