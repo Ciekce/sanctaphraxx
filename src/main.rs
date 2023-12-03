@@ -18,6 +18,7 @@
 
 mod ataxx_move;
 mod attacks;
+mod bench;
 mod bitboard;
 mod core;
 mod eval;

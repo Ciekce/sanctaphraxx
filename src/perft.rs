@@ -114,7 +114,7 @@ mod tests {
     ];
 
     fn test_perft(positions: &[(&str, &[usize])]) {
-        let mut pos = Position::startpos();
+        let mut pos = Position::empty();
 
         for (fen, counts) in positions {
             pos.reset_from_fen(fen).unwrap();

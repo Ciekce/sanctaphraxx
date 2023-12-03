@@ -17,12 +17,13 @@
  */
 
 use crate::ataxx_move::{AtaxxMove, MoveStrError};
+use crate::bench::{run_bench, DEFAULT_BENCH_DEPTH};
 use crate::core::{Color, MAX_DEPTH};
 use crate::eval::static_eval;
 use crate::limit::SearchLimiter;
 use crate::perft::{perft, split_perft};
 use crate::position::{FenError::*, Position};
-use crate::search::search_root;
+use crate::search::Searcher;
 use std::str::FromStr;
 
 const NAME: &str = "Sanctaphraxx";
@@ -30,6 +31,7 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
 
 struct UaiHandler {
+    searcher: Searcher,
     pos: Position,
 }
 
@@ -37,6 +39,7 @@ impl UaiHandler {
     #[must_use]
     fn new() -> Self {
         Self {
+            searcher: Searcher::new(),
             pos: Position::startpos(),
         }
     }
@@ -62,6 +65,7 @@ impl UaiHandler {
                 "d" => self.handle_d(),
                 "perft" => self.handle_perft(&cmd[1..]),
                 "splitperft" => self.handle_splitperft(&cmd[1..]),
+                "bench" => self.handle_bench(&cmd[1..]),
                 "quit" => break,
                 unknown => eprintln!("Unknown command '{}'", unknown),
             }
@@ -93,17 +97,7 @@ impl UaiHandler {
             }
             "fen" => {
                 if let Err(err) = self.pos.reset_from_fen_parts(&args[1..]) {
-                    match err {
-                        NotEnoughParts => eprintln!("Incomplete FEN"),
-                        NotEnoughRanks => eprintln!("Not enough ranks in FEN"),
-                        TooManyRanks => eprintln!("Too many ranks in FEN"),
-                        NotEnoughFiles(rank) => eprintln!("Not enough files in rank {}", rank + 1),
-                        TooManyFiles(rank) => eprintln!("Too many files in rank {}", rank + 1),
-                        InvalidChar(c) => eprintln!("Invalid character '{}' in FEN", c),
-                        InvalidStm => eprintln!("Invalid side to move in FEN"),
-                        InvalidHalfmove => eprintln!("Invalid halfmove clock in FEN"),
-                        InvalidFullmove => eprintln!("Invalid fullmove number in FEN"),
-                    }
+                    eprintln!("{}", err);
                     return;
                 }
                 5usize
@@ -134,7 +128,7 @@ impl UaiHandler {
         }
     }
 
-    fn handle_go(&self, args: &[&str]) {
+    fn handle_go(&mut self, args: &[&str]) {
         let mut limiter: Option<SearchLimiter> = None;
         let mut depth = MAX_DEPTH;
 
@@ -265,7 +259,8 @@ impl UaiHandler {
             limiter = Some(SearchLimiter::infinite());
         }
 
-        search_root(self.pos.clone(), &mut limiter.unwrap(), depth);
+        self.searcher
+            .start_search(self.pos.clone(), limiter.unwrap(), depth);
     }
 
     fn handle_d(&self) {
@@ -300,6 +295,19 @@ impl UaiHandler {
         } else {
             eprintln!("Invalid depth");
         }
+    }
+
+    fn handle_bench(&mut self, args: &[&str]) {
+        let depth = if args.is_empty() {
+            DEFAULT_BENCH_DEPTH
+        } else if let Ok(depth) = args[0].parse::<i32>() {
+            depth
+        } else {
+            eprintln!("Invalid depth");
+            return;
+        };
+
+        run_bench(&mut self.searcher, depth);
     }
 }
 
