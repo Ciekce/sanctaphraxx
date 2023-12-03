@@ -53,7 +53,10 @@ pub struct TTable {
 }
 
 impl TTable {
-    const DEFAULT_SIZE_MB: usize = 64;
+    pub const DEFAULT_SIZE_MB: usize = 64;
+
+    pub const MIN_SIZE_MB: usize = 1;
+    pub const MAX_SIZE_MB: usize = 131072;
 
     pub fn new() -> Self {
         let mut result = Self { table: Vec::new() };
