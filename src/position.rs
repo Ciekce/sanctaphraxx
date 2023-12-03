@@ -100,6 +100,22 @@ pub enum FenError {
     InvalidFullmove,
 }
 
+impl Display for FenError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            FenError::NotEnoughParts => write!(f, "Incomplete FEN"),
+            FenError::NotEnoughRanks => write!(f, "Not enough ranks in FEN"),
+            FenError::TooManyRanks => write!(f, "Too many ranks in FEN"),
+            FenError::NotEnoughFiles(rank) => write!(f, "Not enough files in rank {}", rank + 1),
+            FenError::TooManyFiles(rank) => write!(f, "Too many files in rank {}", rank + 1),
+            FenError::InvalidChar(c) => write!(f, "Invalid character '{}' in FEN", c),
+            FenError::InvalidStm => write!(f, "Invalid side to move in FEN"),
+            FenError::InvalidHalfmove => write!(f, "Invalid halfmove clock in FEN"),
+            FenError::InvalidFullmove => write!(f, "Invalid fullmove number in FEN"),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub enum GameResult {
     Win(Color),
@@ -108,7 +124,7 @@ pub enum GameResult {
 
 impl Position {
     #[must_use]
-    fn empty() -> Self {
+    pub fn empty() -> Self {
         Self {
             blue_to_move: false,
             fullmove: 0,
