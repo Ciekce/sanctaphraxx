@@ -53,7 +53,7 @@ pub fn search_root(mut pos: Position, limiter: &mut SearchLimiter, max_depth: i3
     for depth in 1..=max_depth {
         ctx.seldepth = 0;
 
-        score = search(&mut ctx, depth, 0);
+        score = search(&mut ctx, -SCORE_INF, SCORE_INF, depth, 0);
 
         if ctx.limiter.stopped() {
             break;
@@ -78,7 +78,7 @@ pub fn search_root(mut pos: Position, limiter: &mut SearchLimiter, max_depth: i3
     println!("bestmove {}", best_move);
 }
 
-fn search(ctx: &mut SearchContext, depth: i32, ply: i32) -> Score {
+fn search(ctx: &mut SearchContext, mut alpha: Score, beta: Score, depth: i32, ply: i32) -> Score {
     if depth > 1 && ctx.limiter.should_stop(ctx.nodes) {
         return 0;
     }
@@ -113,15 +113,23 @@ fn search(ctx: &mut SearchContext, depth: i32, ply: i32) -> Score {
         ctx.nodes += 1;
 
         ctx.pos.apply_move::<true, true>(m);
-        let score = -search(ctx, depth - 1, ply + 1);
+        let score = -search(ctx, -beta, -alpha, depth - 1, ply + 1);
         ctx.pos.pop_move::<true>();
 
         if score > best_score {
-            if is_root {
-                ctx.best_move = m;
-            }
-
             best_score = score;
+
+            if score > alpha {
+                if is_root {
+                    ctx.best_move = m;
+                }
+
+                if score >= beta {
+                    break;
+                }
+
+                alpha = score;
+            }
         }
     }
 
