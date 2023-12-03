@@ -118,8 +118,8 @@ mod tests {
 
         for (fen, counts) in positions {
             pos.reset_from_fen(fen).unwrap();
-            for (depth, count) in counts.iter().enumerate() {
-                assert_eq!(do_perft(&mut pos, depth as i32), *count);
+            for (depth, &count) in counts.iter().enumerate() {
+                assert_eq!(do_perft(&mut pos, depth as i32), count);
             }
         }
     }
