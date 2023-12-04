@@ -38,6 +38,7 @@ pub struct Searcher {
 }
 
 impl Searcher {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             limiter: SearchLimiter::infinite(),
@@ -66,6 +67,7 @@ impl Searcher {
         self.search_root(&mut ctx, max_depth, true);
     }
 
+    #[must_use]
     pub fn bench(&mut self, pos: &mut Position, depth: i32) -> (usize, f64) {
         self.limiter = SearchLimiter::infinite();
 
@@ -126,6 +128,7 @@ impl Searcher {
         }
     }
 
+    #[must_use]
     fn search(
         &mut self,
         ctx: &mut SearchContext,

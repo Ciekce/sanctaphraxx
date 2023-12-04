@@ -40,6 +40,7 @@ pub struct TtEntry {
 const _: () = assert!(std::mem::size_of::<TtEntry>() == 8);
 
 impl Default for TtEntry {
+    #[must_use]
     fn default() -> Self {
         Self {
             key: 0,
@@ -61,6 +62,7 @@ impl TTable {
     pub const MIN_SIZE_MB: usize = 1;
     pub const MAX_SIZE_MB: usize = 131072;
 
+    #[must_use]
     pub fn new() -> Self {
         let mut result = Self { table: Vec::new() };
 
@@ -83,6 +85,7 @@ impl TTable {
         self.table.fill(TtEntry::default());
     }
 
+    #[must_use]
     pub fn probe(&self, key: u64) -> Option<TtEntry> {
         let entry = self.table[self.index(key)];
         if entry.flag == TtEntryFlag::None || entry.key != Self::pack_key(key) {
@@ -106,10 +109,12 @@ impl TTable {
         };
     }
 
+    #[must_use]
     fn index(&self, key: u64) -> usize {
         (((key as u128) * (self.table.len() as u128)) >> 64) as usize
     }
 
+    #[must_use]
     fn pack_key(key: u64) -> u16 {
         (key & 0xFFFF) as u16
     }

@@ -19,6 +19,7 @@
 use crate::core::Score;
 use crate::position::Position;
 
+#[must_use]
 pub fn static_eval(pos: &Position) -> Score {
     let us = pos.side_to_move();
     let them = us.flip();

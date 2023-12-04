@@ -32,6 +32,7 @@ pub struct SearchLimiter {
 }
 
 impl SearchLimiter {
+    #[must_use]
     pub fn infinite() -> Self {
         Self {
             limiter: SearchLimiterType::Infinite,
@@ -39,6 +40,7 @@ impl SearchLimiter {
         }
     }
 
+    #[must_use]
     pub fn fixed_nodes(nodes: usize) -> Self {
         Self {
             limiter: SearchLimiterType::FixedNodes(nodes),
@@ -46,6 +48,7 @@ impl SearchLimiter {
         }
     }
 
+    #[must_use]
     pub fn move_time(ms: u64) -> Self {
         let end = Instant::now() + Duration::from_millis(ms);
         Self {
@@ -54,6 +57,7 @@ impl SearchLimiter {
         }
     }
 
+    #[must_use]
     pub fn tournament(our_time_ms: u64, our_inc_ms: u64, moves_to_go: u64) -> Self {
         Self {
             limiter: SearchLimiterType::Tournament(TimeManager::new(
@@ -65,6 +69,7 @@ impl SearchLimiter {
         }
     }
 
+    #[must_use]
     pub fn should_stop(&mut self, nodes: usize) -> bool {
         if self.stopped() {
             return true;
@@ -87,6 +92,7 @@ impl SearchLimiter {
         false
     }
 
+    #[must_use]
     pub fn stopped(&self) -> bool {
         self.stopped
     }
@@ -102,6 +108,7 @@ impl TimeManager {
     const DEFAULT_MOVES_TO_GO: u64 = 30;
     const INCREMENT_MULTIPLIER: f64 = 0.5;
 
+    #[must_use]
     pub fn new(our_time_ms: u64, our_inc_ms: u64, moves_to_go: u64) -> Self {
         let start = Instant::now();
 
@@ -122,6 +129,7 @@ impl TimeManager {
         }
     }
 
+    #[must_use]
     pub fn should_stop(&self) -> bool {
         let total_time = self.start.elapsed().as_secs_f64();
         total_time >= self.max_time
