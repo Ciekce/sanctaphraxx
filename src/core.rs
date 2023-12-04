@@ -93,6 +93,11 @@ impl Square {
     }
 
     #[must_use]
+    pub fn raw(&self) -> u8 {
+        self.0
+    }
+
+    #[must_use]
     pub const fn idx(&self) -> usize {
         (self.rank() * 7 + self.file()) as usize
     }

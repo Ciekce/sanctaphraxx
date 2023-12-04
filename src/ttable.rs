@@ -16,6 +16,7 @@
  * along with Sanctaphraxx. If not, see <https://www.gnu.org/licenses/>.
  */
 
+use crate::ataxx_move::{AtaxxMove, PackedMove};
 use crate::core::{Score, MAX_DEPTH, SCORE_INF};
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
@@ -29,7 +30,8 @@ pub enum TtEntryFlag {
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct TtEntry {
-    pub key: u32,
+    pub key: u16,
+    pub m: PackedMove,
     pub score: i16,
     pub depth: u8,
     pub flag: TtEntryFlag,
@@ -42,6 +44,7 @@ impl Default for TtEntry {
         Self {
             key: 0,
             score: 0,
+            m: PackedMove::NONE,
             depth: 0,
             flag: TtEntryFlag::None,
         }
@@ -89,13 +92,14 @@ impl TTable {
         }
     }
 
-    pub fn store(&mut self, key: u64, score: Score, depth: i32, flag: TtEntryFlag) {
+    pub fn store(&mut self, key: u64, m: AtaxxMove, score: Score, depth: i32, flag: TtEntryFlag) {
         debug_assert!(score.abs() < SCORE_INF);
         debug_assert!((0..=MAX_DEPTH).contains(&depth));
 
         let idx = self.index(key);
         self.table[idx] = TtEntry {
             key: Self::pack_key(key),
+            m: m.pack(),
             score: score as i16,
             depth: depth as u8,
             flag,
@@ -106,7 +110,7 @@ impl TTable {
         (((key as u128) * (self.table.len() as u128)) >> 64) as usize
     }
 
-    fn pack_key(key: u64) -> u32 {
-        (key & 0xFFFFFFFF) as u32
+    fn pack_key(key: u64) -> u16 {
+        (key & 0xFFFF) as u16
     }
 }
