@@ -28,7 +28,12 @@ pub enum AtaxxMove {
     Double(Square, Square),
 }
 
-impl AtaxxMove {}
+impl AtaxxMove {
+    #[must_use]
+    pub fn pack(&self) -> PackedMove {
+        PackedMove::pack(*self)
+    }
+}
 
 pub enum MoveStrError {
     InvalidFrom,
@@ -76,5 +81,92 @@ impl Display for AtaxxMove {
             AtaxxMove::Single(to) => write!(f, "{}", to),
             AtaxxMove::Double(from, to) => write!(f, "{}{}", from, to),
         }
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct PackedMove {
+    value: u16,
+}
+
+impl PackedMove {
+    pub const NONE: Self = Self::from_raw(0);
+    pub const NULL: Self = Self::from_raw(1 << 12);
+
+    #[must_use]
+    const fn from_raw(value: u16) -> Self {
+        Self { value }
+    }
+
+    #[must_use]
+    fn pack(m: AtaxxMove) -> Self {
+        match m {
+            AtaxxMove::None => Self::NONE,
+            AtaxxMove::Null => Self::NULL,
+            AtaxxMove::Single(sq) => Self::from_raw((2 << 12) | sq.raw() as u16),
+            AtaxxMove::Double(from, to) => {
+                Self::from_raw((3 << 12) | ((from.raw() as u16) << 6) | (to.raw() as u16))
+            }
+        }
+    }
+
+    #[must_use]
+    fn raw(&self) -> u16 {
+        self.value
+    }
+
+    #[must_use]
+    pub fn unpack(&self) -> AtaxxMove {
+        match (self.value >> 12) & 0b11 {
+            0 => AtaxxMove::None,
+            1 => AtaxxMove::Null,
+            2 => AtaxxMove::Single(self.dst_sq()),
+            3 => AtaxxMove::Double(self.src_sq(), self.dst_sq()),
+            _ => panic!("Invalid packed move"),
+        }
+    }
+
+    #[must_use]
+    fn src_sq(&self) -> Square {
+        Square::from_raw(((self.value >> 6) & 0b111111) as u8)
+    }
+
+    #[must_use]
+    fn dst_sq(&self) -> Square {
+        Square::from_raw((self.value & 0b111111) as u8)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::ataxx_move::{AtaxxMove, PackedMove};
+    use crate::core::Square;
+
+    #[test]
+    fn pack_single() {
+        let m = AtaxxMove::Single(Square::B6);
+        assert_eq!(m.pack().raw(), 0b10_000000_101001);
+    }
+
+    #[test]
+    fn pack_double() {
+        let m = AtaxxMove::Double(Square::B5, Square::A7);
+        assert_eq!(m.pack().raw(), 0b11_100001_110000);
+    }
+
+    #[test]
+    fn unpack_single() {
+        let m = AtaxxMove::Single(Square::B6);
+        let packed = PackedMove::from_raw(0b10_000000_101001);
+
+        assert_eq!(packed.unpack(), m);
+    }
+
+    #[test]
+    fn unpack_double() {
+        let m = AtaxxMove::Double(Square::B5, Square::A7);
+        let packed = PackedMove::from_raw(0b11_100001_110000);
+
+        assert_eq!(packed.unpack(), m);
     }
 }

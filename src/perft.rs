@@ -16,7 +16,7 @@
  * along with Sanctaphraxx. If not, see <https://www.gnu.org/licenses/>.
  */
 
-use crate::movegen::{generate_moves, MoveList};
+use crate::movegen::{fill_move_list, MoveList};
 use crate::position::Position;
 use std::time::Instant;
 
@@ -27,7 +27,7 @@ fn do_perft(pos: &mut Position, depth: i32) -> usize {
     }
 
     let mut moves = MoveList::new();
-    generate_moves(&mut moves, pos);
+    fill_move_list(&mut moves, pos);
 
     if depth == 1 {
         return moves.len();
@@ -53,7 +53,7 @@ pub fn split_perft(pos: &mut Position, depth: i32) {
     let start = Instant::now();
 
     let mut moves = MoveList::new();
-    generate_moves(&mut moves, pos);
+    fill_move_list(&mut moves, pos);
 
     let mut total = 0usize;
 

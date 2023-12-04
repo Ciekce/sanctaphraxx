@@ -20,9 +20,9 @@ use crate::ataxx_move::AtaxxMove;
 use crate::core::*;
 use crate::eval::static_eval;
 use crate::limit::SearchLimiter;
-use crate::movegen::{generate_moves, MoveList};
+use crate::movegen::{fill_scored_move_list, ScoredMoveList};
 use crate::position::{GameResult, Position};
-use crate::ttable::{TTable, TtEntryFlag};
+use crate::ttable::{TTable, TtEntry, TtEntryFlag};
 use std::time::Instant;
 
 pub struct SearchContext<'a> {
@@ -147,23 +147,33 @@ impl Searcher {
         let is_root = ply == 0;
         let is_pv = beta - alpha > 1;
 
-        if !is_pv {
-            if let Some(tt_entry) = self.ttable.probe(ctx.pos.key()) {
-                if tt_entry.depth as i32 >= depth
-                    && match tt_entry.flag {
-                        TtEntryFlag::Exact => true,
-                        TtEntryFlag::Alpha => tt_entry.score as i32 <= alpha,
-                        TtEntryFlag::Beta => tt_entry.score as i32 >= beta,
-                        _ => unreachable!(),
-                    }
-                {
-                    return tt_entry.score as i32;
-                }
+        let tt_entry = if let Some(tt_entry) = self.ttable.probe(ctx.pos.key()) {
+            tt_entry
+        } else {
+            TtEntry::default()
+        };
+
+        let tt_hit = tt_entry.flag != TtEntryFlag::None;
+
+        if !is_pv
+            && tt_hit
+            && tt_entry.depth as i32 >= depth
+            && match tt_entry.flag {
+                TtEntryFlag::Exact => true,
+                TtEntryFlag::Alpha => tt_entry.score as i32 <= alpha,
+                TtEntryFlag::Beta => tt_entry.score as i32 >= beta,
+                _ => unreachable!(),
             }
+        {
+            return tt_entry.score as i32;
         }
 
-        let mut moves = MoveList::new();
-        generate_moves(&mut moves, ctx.pos);
+        // if no tt hit, the entry's move is None
+        let tt_move = tt_entry.m.unpack();
+
+        let mut moves = ScoredMoveList::new();
+        fill_scored_move_list(&mut moves, ctx.pos);
+        Self::order_moves(&mut moves, tt_move);
 
         if moves.is_empty() {
             return match ctx.pos.result() {
@@ -179,9 +189,11 @@ impl Searcher {
         }
 
         let mut best_score: Score = -SCORE_INF;
+        let mut best_move = AtaxxMove::None;
+
         let mut entry_flag = TtEntryFlag::Alpha;
 
-        for (move_idx, &m) in moves.iter().enumerate() {
+        for (move_idx, &(m, _)) in moves.iter().enumerate() {
             ctx.nodes += 1;
 
             ctx.pos.apply_move::<true, true>(m);
@@ -203,6 +215,8 @@ impl Searcher {
                 best_score = score;
 
                 if score > alpha {
+                    best_move = m;
+
                     if is_root {
                         ctx.best_move = m;
                     }
@@ -220,10 +234,23 @@ impl Searcher {
 
         if !self.limiter.stopped() {
             self.ttable
-                .store(ctx.pos.key(), best_score, depth, entry_flag);
+                .store(ctx.pos.key(), best_move, best_score, depth, entry_flag);
         }
 
         best_score
+    }
+
+    // very temporary solution
+    //TODO movepicker
+    fn order_moves(moves: &mut ScoredMoveList, tt_move: AtaxxMove) {
+        for (m, score) in moves.iter_mut() {
+            if *m == tt_move {
+                *score = 100;
+                break;
+            }
+        }
+
+        moves.sort_unstable_by(|(_, a_score), (_, b_score)| b_score.cmp(a_score));
     }
 
     fn report(ctx: &SearchContext, m: AtaxxMove, depth: i32, time: f64, score: Score) {

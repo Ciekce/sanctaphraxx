@@ -21,11 +21,17 @@ use crate::attacks::DOUBLES;
 use crate::position::Position;
 
 pub type MoveList = arrayvec::ArrayVec<AtaxxMove, 200>;
+pub type ScoredMoveList = arrayvec::ArrayVec<(AtaxxMove, i32), 200>;
 
-pub fn generate_moves(dst: &mut MoveList, pos: &Position) {
+fn generate_moves<Callback>(pos: &Position, mut callback: Callback)
+where
+    Callback: FnMut(AtaxxMove),
+{
     if pos.game_over() {
         return;
     }
+
+    let mut must_pass = true;
 
     let ours = pos.color_occupancy(pos.side_to_move());
     let empty = pos.empty_squares();
@@ -33,17 +39,27 @@ pub fn generate_moves(dst: &mut MoveList, pos: &Position) {
     let singles = ours.expand() & empty;
 
     for to in singles {
-        dst.push(AtaxxMove::Single(to));
+        callback(AtaxxMove::Single(to));
+        must_pass = false;
     }
 
     for from in ours {
         let attacks = DOUBLES[from.bit_idx()] & empty;
         for to in attacks {
-            dst.push(AtaxxMove::Double(from, to));
+            callback(AtaxxMove::Double(from, to));
+            must_pass = false;
         }
     }
 
-    if dst.is_empty() {
-        dst.push(AtaxxMove::Null);
+    if must_pass {
+        callback(AtaxxMove::Null);
     }
+}
+
+pub fn fill_move_list(moves: &mut MoveList, pos: &Position) {
+    generate_moves(pos, |m| moves.push(m));
+}
+
+pub fn fill_scored_move_list(moves: &mut ScoredMoveList, pos: &Position) {
+    generate_moves(pos, |m| moves.push((m, 0)));
 }
