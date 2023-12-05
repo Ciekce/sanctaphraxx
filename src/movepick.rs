@@ -62,7 +62,7 @@ impl Movepicker {
                 self.stage = self.stage.next();
                 match self.stage {
                     MovepickerStage::TtMove => {
-                        if self.tt_move != AtaxxMove::None && pos.is_pseudolegal(self.tt_move) {
+                        if self.tt_move != AtaxxMove::None && pos.is_legal(self.tt_move) {
                             return Some(self.tt_move);
                         }
                     }

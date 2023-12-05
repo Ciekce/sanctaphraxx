@@ -308,7 +308,7 @@ impl Position {
     }
 
     #[must_use]
-    pub fn is_pseudolegal(&self, m: AtaxxMove) -> bool {
+    pub fn is_legal(&self, m: AtaxxMove) -> bool {
         assert_ne!(m, AtaxxMove::None);
 
         let state = self.curr_state();
