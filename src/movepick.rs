@@ -25,18 +25,16 @@ enum MovepickerStage {
     Start,
     TtMove,
     GenerateMoves,
-    Moves,
     End,
 }
 
 impl MovepickerStage {
     fn next(&self) -> Self {
         match self {
-            MovepickerStage::Start => MovepickerStage::TtMove,
-            MovepickerStage::TtMove => MovepickerStage::GenerateMoves,
-            MovepickerStage::GenerateMoves => MovepickerStage::Moves,
-            MovepickerStage::Moves => MovepickerStage::End,
-            MovepickerStage::End => MovepickerStage::End
+            Self::Start => Self::TtMove,
+            Self::TtMove => Self::GenerateMoves,
+            Self::GenerateMoves => Self::End,
+            Self::End => Self::End,
         }
     }
 }
@@ -45,13 +43,13 @@ pub struct Movepicker {
     stage: MovepickerStage,
     tt_move: AtaxxMove,
     generated_moves: MoveList,
-    idx: usize
+    idx: usize,
 }
 
 impl Movepicker {
     pub fn new(tt_move: AtaxxMove) -> Self {
         Self {
-            stage: MovepickerStage::TtMove,
+            stage: MovepickerStage::Start,
             tt_move,
             generated_moves: MoveList::new(),
             idx: 0,
@@ -64,13 +62,13 @@ impl Movepicker {
                 self.stage = self.stage.next();
                 match self.stage {
                     MovepickerStage::TtMove => {
-                        if self.tt_move != AtaxxMove::None {
+                        if self.tt_move != AtaxxMove::None && pos.is_pseudolegal(self.tt_move) {
                             return Some(self.tt_move);
                         }
-                    },
+                    }
                     MovepickerStage::GenerateMoves => {
-                        fill_move_list(&mut self.generated_moves, pos);
-                    },
+                        fill_move_list(&mut self.generated_moves, pos)
+                    }
                     MovepickerStage::End => return None,
                     _ => {}
                 }

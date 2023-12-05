@@ -307,6 +307,30 @@ impl Position {
         };
     }
 
+    #[must_use]
+    pub fn is_pseudolegal(&self, m: AtaxxMove) -> bool {
+        assert_ne!(m, AtaxxMove::None);
+
+        let state = self.curr_state();
+
+        let ours = self.color_occupancy(self.side_to_move());
+        if ours.is_empty() {
+            return false;
+        }
+
+        let empty = state.empty_squares(self.gaps);
+
+        match m {
+            Null => (ours.expand().expand() & empty).is_empty(),
+            Single(sq) => (ours.expand() & empty).get(sq),
+            Double(from, to) => {
+                let singles = ours.expand();
+                ours.get(from) && (singles.expand() & !singles & empty).get(to)
+            }
+            _ => unreachable!(),
+        }
+    }
+
     pub fn apply_move<const HISTORY: bool, const UPDATE_KEY: bool>(&mut self, m: AtaxxMove) {
         debug_assert!(m != AtaxxMove::None);
 

@@ -20,11 +20,10 @@ use crate::ataxx_move::AtaxxMove;
 use crate::core::*;
 use crate::eval::static_eval;
 use crate::limit::SearchLimiter;
-use crate::movegen::{fill_scored_move_list, ScoredMoveList};
+use crate::movepick::Movepicker;
 use crate::position::{GameResult, Position};
 use crate::ttable::{TTable, TtEntry, TtEntryFlag};
 use std::time::Instant;
-use crate::movepick::Movepicker;
 
 pub struct SearchContext<'a> {
     pos: &'a mut Position,
@@ -184,7 +183,7 @@ impl Searcher {
 
         let mut move_idx = 0usize;
 
-        while let Some(m) = movepicker.next(&ctx.pos) {
+        while let Some(m) = movepicker.next(ctx.pos) {
             ctx.nodes += 1;
 
             ctx.pos.apply_move::<true, true>(m);
@@ -199,6 +198,8 @@ impl Searcher {
                     zw_score
                 }
             };
+
+            move_idx += 1;
 
             ctx.pos.pop_move::<true>();
 

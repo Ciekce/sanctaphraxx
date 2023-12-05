@@ -29,13 +29,13 @@ mod eval;
 mod hash;
 mod limit;
 mod movegen;
+mod movepick;
 mod perft;
 mod position;
 mod search;
 mod ttable;
 mod uai;
 mod util;
-mod movepick;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
