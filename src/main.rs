@@ -35,6 +35,7 @@ mod search;
 mod ttable;
 mod uai;
 mod util;
+mod movepick;
 
 fn main() {
     let args: Vec<String> = env::args().collect();

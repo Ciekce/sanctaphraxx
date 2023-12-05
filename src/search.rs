@@ -24,6 +24,7 @@ use crate::movegen::{fill_scored_move_list, ScoredMoveList};
 use crate::position::{GameResult, Position};
 use crate::ttable::{TTable, TtEntry, TtEntryFlag};
 use std::time::Instant;
+use crate::movepick::Movepicker;
 
 pub struct SearchContext<'a> {
     pos: &'a mut Position,
@@ -174,29 +175,16 @@ impl Searcher {
         // if no tt hit, the entry's move is None
         let tt_move = tt_entry.m.unpack();
 
-        let mut moves = ScoredMoveList::new();
-        fill_scored_move_list(&mut moves, ctx.pos);
-        Self::order_moves(&mut moves, tt_move);
-
-        if moves.is_empty() {
-            return match ctx.pos.result() {
-                GameResult::Win(side) => {
-                    if side == ctx.pos.side_to_move() {
-                        SCORE_MATE - ply
-                    } else {
-                        -SCORE_MATE + ply
-                    }
-                }
-                GameResult::Draw => 0,
-            };
-        }
+        let mut movepicker = Movepicker::new(tt_move);
 
         let mut best_score: Score = -SCORE_INF;
         let mut best_move = AtaxxMove::None;
 
         let mut entry_flag = TtEntryFlag::Alpha;
 
-        for (move_idx, &(m, _)) in moves.iter().enumerate() {
+        let mut move_idx = 0usize;
+
+        while let Some(m) = movepicker.next(&ctx.pos) {
             ctx.nodes += 1;
 
             ctx.pos.apply_move::<true, true>(m);
@@ -235,25 +223,25 @@ impl Searcher {
             }
         }
 
+        if move_idx == 0 {
+            return match ctx.pos.result() {
+                GameResult::Win(side) => {
+                    if side == ctx.pos.side_to_move() {
+                        SCORE_MATE - ply
+                    } else {
+                        -SCORE_MATE + ply
+                    }
+                }
+                GameResult::Draw => 0,
+            };
+        }
+
         if !self.limiter.stopped() {
             self.ttable
                 .store(ctx.pos.key(), best_move, best_score, depth, entry_flag);
         }
 
         best_score
-    }
-
-    // very temporary solution
-    //TODO movepicker
-    fn order_moves(moves: &mut ScoredMoveList, tt_move: AtaxxMove) {
-        for (m, score) in moves.iter_mut() {
-            if *m == tt_move {
-                *score = 100;
-                break;
-            }
-        }
-
-        moves.sort_unstable_by(|(_, a_score), (_, b_score)| b_score.cmp(a_score));
     }
 
     fn report(ctx: &SearchContext, m: AtaxxMove, depth: i32, time: f64, score: Score) {
