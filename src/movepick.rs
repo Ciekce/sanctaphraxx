@@ -17,7 +17,7 @@
  */
 
 use crate::ataxx_move::AtaxxMove;
-use crate::movegen::{fill_move_list, fill_scored_move_list, MoveList, ScoredMoveList};
+use crate::movegen::{fill_move_list, MoveList};
 use crate::position::Position;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
@@ -47,6 +47,7 @@ pub struct Movepicker {
 }
 
 impl Movepicker {
+    #[must_use]
     pub fn new(tt_move: AtaxxMove) -> Self {
         Self {
             stage: MovepickerStage::Start,
@@ -80,6 +81,98 @@ impl Movepicker {
             if m != self.tt_move {
                 return Some(m);
             }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::ataxx_move::AtaxxMove;
+    use crate::core::Square;
+    use crate::movegen::{fill_move_list, MoveList};
+    use crate::movepick::Movepicker;
+    use crate::position::Position;
+
+    #[test]
+    fn tt_move_first() {
+        let pos = Position::startpos();
+
+        let mut moves = MoveList::new();
+        fill_move_list(&mut moves, &pos);
+
+        // arbitrary
+        let tt_move = moves[3];
+        let mut movepicker = Movepicker::new(tt_move);
+
+        assert_eq!(tt_move, movepicker.next(&pos).unwrap());
+    }
+
+    #[test]
+    fn tt_move_unduplicated() {
+        let pos = Position::startpos();
+
+        let mut moves = MoveList::new();
+        fill_move_list(&mut moves, &pos);
+
+        let tt_move = moves[3];
+        let mut movepicker = Movepicker::new(tt_move);
+
+        movepicker.next(&pos);
+
+        while let Some(m) = movepicker.next(&pos) {
+            assert_ne!(m, tt_move);
+        }
+    }
+
+    #[test]
+    fn no_move_missing() {
+        let pos = Position::startpos();
+
+        let mut moves = MoveList::new();
+        fill_move_list(&mut moves, &pos);
+
+        let tt_move = moves[3];
+        let mut movepicker = Movepicker::new(tt_move);
+
+        let mut move_count = 0usize;
+
+        while movepicker.next(&pos).is_some() {
+            move_count += 1;
+        }
+
+        assert_eq!(move_count, moves.len());
+    }
+
+    #[test]
+    fn no_move_missing_no_tt_move() {
+        let pos = Position::startpos();
+
+        let mut moves = MoveList::new();
+        fill_move_list(&mut moves, &pos);
+
+        let mut movepicker = Movepicker::new(AtaxxMove::None);
+
+        let mut move_count = 0usize;
+
+        while movepicker.next(&pos).is_some() {
+            move_count += 1;
+        }
+
+        assert_eq!(move_count, moves.len());
+    }
+
+    #[test]
+    fn illegal_tt_move() {
+        let pos = Position::startpos();
+
+        let mut moves = MoveList::new();
+        fill_move_list(&mut moves, &pos);
+
+        let tt_move = AtaxxMove::Single(Square::B1);
+        let mut movepicker = Movepicker::new(tt_move);
+
+        while let Some(m) = movepicker.next(&pos) {
+            assert_ne!(m, tt_move);
         }
     }
 }
