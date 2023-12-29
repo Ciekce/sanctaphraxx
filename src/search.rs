@@ -24,6 +24,8 @@ use crate::movegen::{fill_scored_move_list, ScoredMoveList};
 use crate::position::{GameResult, Position};
 use crate::ttable::{TTable, TtEntry, TtEntryFlag};
 use std::time::Instant;
+use arrayvec::ArrayVec;
+use crate::history::{history_bonus, HistoryTable};
 
 pub struct SearchContext<'a> {
     pos: &'a mut Position,
@@ -35,6 +37,7 @@ pub struct SearchContext<'a> {
 pub struct Searcher {
     limiter: SearchLimiter,
     ttable: TTable,
+    history: HistoryTable,
 }
 
 impl Searcher {
@@ -43,11 +46,13 @@ impl Searcher {
         Self {
             limiter: SearchLimiter::infinite(),
             ttable: TTable::new(),
+            history: HistoryTable::new(),
         }
     }
 
     pub fn new_game(&mut self) {
         self.ttable.clear();
+        self.history.clear();
     }
 
     pub fn resize_tt(&mut self, mb: usize) {
@@ -176,7 +181,7 @@ impl Searcher {
 
         let mut moves = ScoredMoveList::new();
         fill_scored_move_list(&mut moves, ctx.pos);
-        Self::order_moves(&mut moves, tt_move);
+        Self::order_moves(&mut moves, &self.history, tt_move);
 
         if moves.is_empty() {
             return match ctx.pos.result() {
@@ -190,6 +195,8 @@ impl Searcher {
                 GameResult::Draw => 0,
             };
         }
+
+        let mut moves_tried = ArrayVec::<AtaxxMove, 200>::new();
 
         let mut best_score: Score = -SCORE_INF;
         let mut best_move = AtaxxMove::None;
@@ -225,6 +232,15 @@ impl Searcher {
                     }
 
                     if score >= beta {
+                        let bonus = history_bonus(depth);
+                        let penalty = -bonus;
+
+                        self.history.update_history(m, bonus);
+
+                        for prev in moves_tried {
+                            self.history.update_history(prev, penalty);
+                        }
+
                         entry_flag = TtEntryFlag::Beta;
                         break;
                     }
@@ -233,6 +249,8 @@ impl Searcher {
                     entry_flag = TtEntryFlag::Exact;
                 }
             }
+
+            moves_tried.push(m);
         }
 
         if !self.limiter.stopped() {
@@ -245,12 +263,13 @@ impl Searcher {
 
     // very temporary solution
     //TODO movepicker
-    fn order_moves(moves: &mut ScoredMoveList, tt_move: AtaxxMove) {
+    fn order_moves(moves: &mut ScoredMoveList, history: &HistoryTable, tt_move: AtaxxMove) {
         for (m, score) in moves.iter_mut() {
-            if *m == tt_move {
-                *score = 100;
-                break;
-            }
+            *score = if *m == tt_move {
+                i32::MAX
+            } else {
+                history.get_history(*m) as i32
+            };
         }
 
         moves.sort_unstable_by(|(_, a_score), (_, b_score)| b_score.cmp(a_score));
