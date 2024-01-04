@@ -21,12 +21,14 @@ use crate::core::*;
 use crate::eval::static_eval;
 use crate::limit::SearchLimiter;
 use crate::movegen::{fill_scored_move_list, ScoredMoveList};
+use crate::nnue::NnueState;
 use crate::position::{GameResult, Position};
 use crate::ttable::{TTable, TtEntry, TtEntryFlag};
 use std::time::Instant;
 
 pub struct SearchContext<'a> {
     pos: &'a mut Position,
+    nnue_state: NnueState,
     nodes: usize,
     seldepth: u32,
     best_move: AtaxxMove,
@@ -59,10 +61,13 @@ impl Searcher {
 
         let mut ctx = SearchContext {
             pos: &mut pos,
+            nnue_state: NnueState::default(),
             nodes: 0,
             seldepth: 0,
             best_move: AtaxxMove::None,
         };
+
+        ctx.nnue_state.reset(ctx.pos);
 
         self.search_root(&mut ctx, max_depth, true);
     }
@@ -73,10 +78,13 @@ impl Searcher {
 
         let mut ctx = SearchContext {
             pos,
+            nnue_state: NnueState::default(),
             nodes: 0,
             seldepth: 0,
             best_move: AtaxxMove::None,
         };
+
+        ctx.nnue_state.reset(ctx.pos);
 
         let start = Instant::now();
 
@@ -144,7 +152,7 @@ impl Searcher {
         ctx.seldepth = ctx.seldepth.max(ply as u32);
 
         if depth <= 0 || ply >= MAX_DEPTH {
-            return static_eval(ctx.pos);
+            return static_eval(ctx.pos, &ctx.nnue_state);
         }
 
         let is_root = ply == 0;

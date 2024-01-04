@@ -431,6 +431,11 @@ impl Position {
     }
 
     #[must_use]
+    pub fn gaps(&self) -> Bitboard {
+        self.gaps
+    }
+
+    #[must_use]
     pub fn gap_at(&self, sq: Square) -> bool {
         self.gaps.get(sq)
     }

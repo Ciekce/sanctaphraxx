@@ -19,7 +19,7 @@
 use crate::ataxx_move::{AtaxxMove, MoveStrError};
 use crate::bench::{run_bench, DEFAULT_BENCH_DEPTH};
 use crate::core::{Color, MAX_DEPTH};
-use crate::eval::static_eval;
+use crate::eval::static_eval_once;
 use crate::limit::SearchLimiter;
 use crate::perft::{perft, split_perft};
 use crate::position::Position;
@@ -312,7 +312,7 @@ impl UaiHandler {
         println!();
         println!("Fen: {}", self.pos.to_fen());
         println!("Key: {:16x}", self.pos.key());
-        println!("Static eval: {}", static_eval(&self.pos));
+        println!("Static eval: {}", static_eval_once(&self.pos));
     }
 
     fn handle_perft(&mut self, args: &[&str]) {
