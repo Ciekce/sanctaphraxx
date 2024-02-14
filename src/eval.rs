@@ -17,12 +17,15 @@
  */
 
 use crate::core::Score;
+use crate::nnue;
 use crate::position::Position;
 
 #[must_use]
-pub fn static_eval(pos: &Position) -> Score {
-    let us = pos.side_to_move();
-    let them = us.flip();
+pub fn static_eval(pos: &Position, nnue_state: &nnue::NnueState) -> Score {
+    nnue_state.evaluate(pos.side_to_move())
+}
 
-    pos.color_occupancy(us).popcount() as Score - pos.color_occupancy(them).popcount() as Score
+#[must_use]
+pub fn static_eval_once(pos: &Position) -> Score {
+    nnue::evaluate_once(pos)
 }

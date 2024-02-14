@@ -18,3 +18,4 @@
 
 pub mod misc;
 pub mod rng;
+pub mod simd;

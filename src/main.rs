@@ -29,6 +29,7 @@ mod eval;
 mod hash;
 mod limit;
 mod movegen;
+mod nnue;
 mod perft;
 mod position;
 mod search;
