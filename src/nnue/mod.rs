@@ -1,6 +1,6 @@
 /*
  * Sanctaphraxx, a UAI Ataxx engine
- * Copyright (C) 2023 Ciekce
+ * Copyright (C) 2024 Ciekce
  *
  * Sanctaphraxx is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
