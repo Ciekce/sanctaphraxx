@@ -35,12 +35,12 @@ struct Accumulator {
 
 impl Accumulator {
     fn value_ptr(&self, idx: usize) -> *const simd::Register16 {
-        assert!(idx < L1_SIZE);
+        debug_assert!(idx < L1_SIZE);
         unsafe { self.values.0.as_ptr().add(idx).cast() }
     }
 
     fn value_ptr_mut(&mut self, idx: usize) -> *mut simd::Register16 {
-        assert!(idx < L1_SIZE);
+        debug_assert!(idx < L1_SIZE);
         unsafe { self.values.0.as_mut_ptr().add(idx).cast() }
     }
 

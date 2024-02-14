@@ -39,8 +39,8 @@ impl<T, const INPUTS: usize, const WEIGHTS: usize, const OUTPUTS: usize>
     Layer<T, INPUTS, WEIGHTS, OUTPUTS>
 {
     pub fn weight_ptr(&self, feature: usize, idx: usize) -> *const simd::Register16 {
-        assert!(feature * OUTPUTS + idx < WEIGHTS);
-        assert_eq!(idx % simd::CHUNK_SIZE_I16, 0);
+        debug_assert!(feature * OUTPUTS + idx < WEIGHTS);
+        debug_assert_eq!(idx % simd::CHUNK_SIZE_I16, 0);
 
         unsafe { self.weights.0.as_ptr().add(feature * OUTPUTS + idx).cast() }
     }
