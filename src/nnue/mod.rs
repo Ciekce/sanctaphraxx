@@ -24,24 +24,24 @@ use crate::util::simd;
 mod activation;
 mod network;
 
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[repr(align(64))]
+pub struct Align64<T>(pub T);
+
 #[derive(Debug, Copy, Clone)]
 struct Accumulator {
-    values: [i16; L1_SIZE],
+    values: Align64<[i16; L1_SIZE]>,
 }
 
 impl Accumulator {
     fn value_ptr(&self, idx: usize) -> *const simd::Register16 {
         assert!(idx < L1_SIZE);
-        assert_eq!(idx % std::mem::size_of::<simd::Register16>(), 0);
-
-        unsafe { self.values.as_ptr().add(idx).cast() }
+        unsafe { self.values.0.as_ptr().add(idx).cast() }
     }
 
     fn value_ptr_mut(&mut self, idx: usize) -> *mut simd::Register16 {
         assert!(idx < L1_SIZE);
-        assert_eq!(idx % std::mem::size_of::<simd::Register16>(), 0);
-
-        unsafe { self.values.as_mut_ptr().add(idx).cast() }
+        unsafe { self.values.0.as_mut_ptr().add(idx).cast() }
     }
 
     fn activate_feature(&mut self, feature: usize) {
@@ -100,7 +100,7 @@ impl Accumulator {
 impl Default for Accumulator {
     fn default() -> Self {
         Self {
-            values: [0; L1_SIZE],
+            values: Align64([0; L1_SIZE]),
         }
     }
 }
@@ -127,8 +127,8 @@ impl AccumulatorPair {
     fn reset(&mut self, pos: &Position) {
         let biases = NETWORK.feature_transformer.biases.0.as_slice();
 
-        self.red_mut().values.copy_from_slice(biases);
-        self.blue_mut().values.copy_from_slice(biases);
+        self.red_mut().values.0.copy_from_slice(biases);
+        self.blue_mut().values.0.copy_from_slice(biases);
 
         for sq in pos.gaps() {
             self.activate_gap(sq);
@@ -277,12 +277,12 @@ fn evaluate(accs: &AccumulatorPair, stm: Color) -> Score {
         let values = unsafe { simd::load16(theirs.value_ptr(i)) };
         let activated = Activation::activate(values);
 
-        let weights = unsafe { simd::load16(NETWORK.l1.weight_ptr(1, i)) };
+        let weights = unsafe { simd::load16(NETWORK.l1.weight_ptr(L1_SIZE, i)) };
 
         let product = simd::mul_add_adj_i16(activated, weights);
 
         sum = simd::add_i32(product, sum);
     }
 
-    simd::horizontal_sum_i32(sum)
+    simd::horizontal_sum_i32(sum) * SCALE / (L1_Q * OUTPUT_Q)
 }

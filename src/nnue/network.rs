@@ -16,20 +16,18 @@
  * along with Sanctaphraxx. If not, see <https://www.gnu.org/licenses/>.
  */
 
-use crate::nnue::activation;
+use crate::nnue::{activation, Align64};
 use crate::util::simd;
 
 pub const L1_Q: i32 = 255;
 pub const OUTPUT_Q: i32 = 64;
 
+pub const SCALE: i32 = 400;
+
 pub const INPUT_SIZE: usize = 147;
 pub const L1_SIZE: usize = 64;
 
 pub type Activation = activation::ClippedReLU<{ L1_Q as i16 }>;
-
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-#[repr(align(64))]
-pub struct Align64<T>(pub T);
 
 #[repr(C)]
 pub struct Layer<T, const INPUTS: usize, const WEIGHTS: usize, const OUTPUTS: usize> {
@@ -41,10 +39,10 @@ impl<T, const INPUTS: usize, const WEIGHTS: usize, const OUTPUTS: usize>
     Layer<T, INPUTS, WEIGHTS, OUTPUTS>
 {
     pub fn weight_ptr(&self, feature: usize, idx: usize) -> *const simd::Register16 {
-        assert!(feature * INPUTS + idx < WEIGHTS);
+        assert!(feature * OUTPUTS + idx < WEIGHTS);
         assert_eq!(idx % simd::CHUNK_SIZE_I16, 0);
 
-        unsafe { self.weights.0.as_ptr().add(feature * INPUTS + idx).cast() }
+        unsafe { self.weights.0.as_ptr().add(feature * OUTPUTS + idx).cast() }
     }
 }
 

@@ -19,7 +19,7 @@
 use crate::position::Position;
 use crate::search::Searcher;
 
-pub const DEFAULT_BENCH_DEPTH: i32 = 7;
+pub const DEFAULT_BENCH_DEPTH: i32 = 6;
 pub const BENCH_TT_SIZE: usize = 16;
 
 const BENCH_FENS: &[&str] = &[

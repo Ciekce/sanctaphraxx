@@ -109,6 +109,12 @@ pub fn set1_i16(v: i16) -> Register16 {
 
 //#[inline(always)]
 pub unsafe fn load16(ptr: *const Register16) -> Register16 {
+    debug_assert_eq!(
+        ptr.cast::<u8>()
+            .align_offset(std::mem::size_of::<Register16>()),
+        0
+    );
+
     #[cfg(all(target_feature = "avx512f", target_feature = "avx512bw"))]
     {
         _mm512_load_si512(ptr as *const i32)
@@ -135,6 +141,12 @@ pub unsafe fn load16(ptr: *const Register16) -> Register16 {
 
 #[inline(always)]
 pub unsafe fn store16(ptr: *mut Register16, v: Register16) {
+    debug_assert_eq!(
+        ptr.cast::<u8>()
+            .align_offset(std::mem::size_of::<Register16>()),
+        0
+    );
+
     #[cfg(all(target_feature = "avx512f", target_feature = "avx512bw"))]
     {
         _mm512_store_si512(ptr as *mut i32, v)

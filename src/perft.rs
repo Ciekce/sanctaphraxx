@@ -36,9 +36,9 @@ fn do_perft(pos: &mut Position, depth: i32) -> usize {
     let mut total = 0usize;
 
     for m in moves {
-        pos.apply_move::<true, false>(m);
+        pos.apply_move::<true, false>(m, None);
         total += do_perft(pos, depth - 1);
-        pos.pop_move::<false>();
+        pos.pop_move::<false>(None);
     }
 
     total
@@ -58,14 +58,14 @@ pub fn split_perft(pos: &mut Position, depth: i32) {
     let mut total = 0usize;
 
     for m in moves {
-        pos.apply_move::<true, false>(m);
+        pos.apply_move::<true, false>(m, None);
 
         let value = do_perft(pos, depth - 1);
 
         total += value;
         println!("{}\t{}", m, value);
 
-        pos.pop_move::<false>();
+        pos.pop_move::<false>(None);
     }
 
     let time = start.elapsed().as_secs_f64();

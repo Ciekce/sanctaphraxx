@@ -22,6 +22,7 @@ use crate::attacks::SINGLES;
 use crate::bitboard::Bitboard;
 use crate::core::{Color, Square};
 use crate::hash;
+use crate::nnue::NnueState;
 use std::cmp::Ordering;
 use std::fmt::{Display, Formatter};
 
@@ -307,7 +308,11 @@ impl Position {
         };
     }
 
-    pub fn apply_move<const HISTORY: bool, const UPDATE_KEY: bool>(&mut self, m: AtaxxMove) {
+    pub fn apply_move<const HISTORY: bool, const UPDATE_KEY: bool>(
+        &mut self,
+        m: AtaxxMove,
+        nnue: Option<&mut NnueState>,
+    ) {
         debug_assert!(m != AtaxxMove::None);
 
         let us = self.side_to_move();
@@ -342,6 +347,9 @@ impl Position {
             }
         };
 
+        let old_red = new_state.red_occupancy();
+        let old_blue = new_state.blue_occupancy();
+
         let mut ours = new_state.colors[us.idx()];
         let mut theirs = new_state.colors[them.idx()];
 
@@ -354,6 +362,29 @@ impl Position {
 
         new_state.colors[us.idx()] = ours;
         new_state.colors[them.idx()] = theirs;
+
+        if let Some(nnue) = nnue {
+            nnue.push();
+
+            let new_red = new_state.red_occupancy();
+            let new_blue = new_state.blue_occupancy();
+
+            for red_added in new_red & !old_red {
+                nnue.activate_feature(Color::RED, red_added);
+            }
+
+            for blue_added in new_blue & !old_blue {
+                nnue.activate_feature(Color::BLUE, blue_added);
+            }
+
+            for red_removed in old_red & !new_red {
+                nnue.deactivate_feature(Color::RED, red_removed);
+            }
+
+            for blue_removed in old_blue & !new_blue {
+                nnue.deactivate_feature(Color::BLUE, blue_removed);
+            }
+        }
 
         if UPDATE_KEY {
             new_state.key ^= hash::color_square_key(us, to);
@@ -375,7 +406,7 @@ impl Position {
         }
     }
 
-    pub fn pop_move<const UPDATE_KEY: bool>(&mut self) {
+    pub fn pop_move<const UPDATE_KEY: bool>(&mut self, nnue: Option<&mut NnueState>) {
         debug_assert!(self.states.len() > 1);
 
         let m = self.states.pop().unwrap().last_move;
@@ -388,6 +419,10 @@ impl Position {
 
         if m != AtaxxMove::Null && self.blue_to_move {
             self.fullmove -= 1;
+        }
+
+        if let Some(nnue) = nnue {
+            nnue.pop();
         }
     }
 
@@ -544,7 +579,7 @@ mod tests {
     #[test]
     fn noncapture_single_key() {
         let mut pos = Position::startpos();
-        pos.apply_move::<false, true>(AtaxxMove::Single(Square::B6));
+        pos.apply_move::<false, true>(AtaxxMove::Single(Square::B6), None);
 
         let incr_key = pos.key();
 
@@ -557,7 +592,7 @@ mod tests {
     #[test]
     fn noncapture_double_key() {
         let mut pos = Position::startpos();
-        pos.apply_move::<false, true>(AtaxxMove::Double(Square::A7, Square::C5));
+        pos.apply_move::<false, true>(AtaxxMove::Double(Square::A7, Square::C5), None);
 
         let incr_key = pos.key();
 
@@ -570,7 +605,7 @@ mod tests {
     #[test]
     fn capture_single_key() {
         let mut pos = Position::from_fen("x5o/2o4/7/7/7/7/o5x x 0 1").unwrap();
-        pos.apply_move::<false, true>(AtaxxMove::Single(Square::B6));
+        pos.apply_move::<false, true>(AtaxxMove::Single(Square::B6), None);
 
         let incr_key = pos.key();
 
@@ -583,7 +618,7 @@ mod tests {
     #[test]
     fn capture_double_key() {
         let mut pos = Position::from_fen("x5o/2o4/7/7/7/7/o5x x 0 1").unwrap();
-        pos.apply_move::<false, true>(AtaxxMove::Double(Square::A7, Square::C5));
+        pos.apply_move::<false, true>(AtaxxMove::Double(Square::A7, Square::C5), None);
 
         let incr_key = pos.key();
 

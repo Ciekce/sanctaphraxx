@@ -207,7 +207,8 @@ impl Searcher {
         for (move_idx, &(m, _)) in moves.iter().enumerate() {
             ctx.nodes += 1;
 
-            ctx.pos.apply_move::<true, true>(m);
+            ctx.pos
+                .apply_move::<true, true>(m, Some(&mut ctx.nnue_state));
 
             let score = if is_pv && move_idx == 0 {
                 -self.search(ctx, -beta, -alpha, depth - 1, ply + 1)
@@ -220,7 +221,7 @@ impl Searcher {
                 }
             };
 
-            ctx.pos.pop_move::<true>();
+            ctx.pos.pop_move::<true>(Some(&mut ctx.nnue_state));
 
             if score > best_score {
                 best_score = score;

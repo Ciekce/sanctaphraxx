@@ -158,7 +158,7 @@ impl UaiHandler {
 
         for move_str in &args[next + 1..] {
             match AtaxxMove::from_str(move_str) {
-                Ok(m) => self.pos.apply_move::<false, true>(m),
+                Ok(m) => self.pos.apply_move::<false, true>(m, None),
                 Err(err) => eprintln!(
                     "Invalid move '{}': {}",
                     move_str,
