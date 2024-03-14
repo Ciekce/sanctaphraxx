@@ -17,7 +17,6 @@
  */
 
 use crate::ataxx_move::AtaxxMove;
-use crate::ataxx_move::AtaxxMove::*;
 use crate::attacks::SINGLES;
 use crate::bitboard::Bitboard;
 use crate::core::{Color, Square};
@@ -30,7 +29,6 @@ use std::fmt::{Display, Formatter};
 struct BoardState {
     colors: [Bitboard; 2],
     key: u64,
-    last_move: AtaxxMove,
     halfmove: u16,
 }
 
@@ -73,7 +71,6 @@ impl Default for BoardState {
         BoardState {
             colors: [Bitboard::EMPTY, Bitboard::EMPTY],
             key: 0,
-            last_move: AtaxxMove::Null,
             halfmove: 0,
         }
     }
@@ -156,7 +153,6 @@ impl Position {
                 Bitboard::from_raw(0x40000000000001),
             ],
             key: 0,
-            last_move: AtaxxMove::Null,
             halfmove: 0,
         });
 
@@ -314,6 +310,7 @@ impl Position {
         nnue: Option<&mut NnueState>,
     ) {
         debug_assert!(m != AtaxxMove::None);
+        debug_assert!(m != AtaxxMove::Null || nnue.is_none());
 
         let us = self.side_to_move();
         let them = us.flip();
@@ -321,7 +318,6 @@ impl Position {
         self.blue_to_move = !self.blue_to_move;
 
         let mut new_state = self.curr_state().clone();
-        self.curr_state_mut().last_move = m;
 
         if UPDATE_KEY {
             self.hashes.push(new_state.key);
@@ -332,70 +328,69 @@ impl Position {
             self.fullmove += 1;
         }
 
-        let (from, to) = match m {
-            Single(to) => {
-                new_state.halfmove = 0;
-                (to, to)
-            }
-            Double(from, to) => {
-                new_state.halfmove += 1;
-                (from, to)
-            }
-            _ => {
-                self.states.push(new_state);
-                return;
-            }
-        };
+        if m != AtaxxMove::Null {
+            let (from, to) = match m {
+                AtaxxMove::Single(to) => {
+                    new_state.halfmove = 0;
+                    (to, to)
+                }
+                AtaxxMove::Double(from, to) => {
+                    new_state.halfmove += 1;
+                    (from, to)
+                }
+                _ => unreachable!(),
+            };
 
-        let old_red = new_state.red_occupancy();
-        let old_blue = new_state.blue_occupancy();
+            let old_red = new_state.red_occupancy();
+            let old_blue = new_state.blue_occupancy();
 
-        let mut ours = new_state.colors[us.idx()];
-        let mut theirs = new_state.colors[them.idx()];
+            let mut ours = new_state.colors[us.idx()];
+            let mut theirs = new_state.colors[them.idx()];
 
-        ours ^= from.bit() | to.bit();
+            ours ^= from.bit() | to.bit();
 
-        let captured = SINGLES[to.bit_idx()] & theirs;
+            let captured = SINGLES[to.bit_idx()] & theirs;
 
-        ours ^= captured;
-        theirs ^= captured;
+            ours ^= captured;
+            theirs ^= captured;
 
-        new_state.colors[us.idx()] = ours;
-        new_state.colors[them.idx()] = theirs;
+            new_state.colors[us.idx()] = ours;
+            new_state.colors[them.idx()] = theirs;
 
-        if let Some(nnue) = nnue {
-            nnue.push();
+            if let Some(nnue) = nnue {
+                nnue.push();
 
-            let new_red = new_state.red_occupancy();
-            let new_blue = new_state.blue_occupancy();
+                let new_red = new_state.red_occupancy();
+                let new_blue = new_state.blue_occupancy();
 
-            for red_added in new_red & !old_red {
-                nnue.activate_feature(Color::RED, red_added);
-            }
+                for red_added in new_red & !old_red {
+                    nnue.activate_feature(Color::RED, red_added);
+                }
 
-            for blue_added in new_blue & !old_blue {
-                nnue.activate_feature(Color::BLUE, blue_added);
-            }
+                for blue_added in new_blue & !old_blue {
+                    nnue.activate_feature(Color::BLUE, blue_added);
+                }
 
-            for red_removed in old_red & !new_red {
-                nnue.deactivate_feature(Color::RED, red_removed);
-            }
+                for red_removed in old_red & !new_red {
+                    nnue.deactivate_feature(Color::RED, red_removed);
+                }
 
-            for blue_removed in old_blue & !new_blue {
-                nnue.deactivate_feature(Color::BLUE, blue_removed);
-            }
-        }
-
-        if UPDATE_KEY {
-            new_state.key ^= hash::color_square_key(us, to);
-
-            if from != to {
-                new_state.key ^= hash::color_square_key(us, from);
+                for blue_removed in old_blue & !new_blue {
+                    nnue.deactivate_feature(Color::BLUE, blue_removed);
+                }
             }
 
-            for sq in captured {
-                new_state.key ^= hash::color_square_key(us, sq);
-                new_state.key ^= hash::color_square_key(them, sq);
+            if UPDATE_KEY {
+                new_state.key ^= hash::color_square_key(us, to);
+
+                if from != to {
+                    new_state.key ^= hash::color_square_key(us, from);
+                }
+
+                for sq in captured {
+                    new_state.key ^= hash::color_square_key(us, sq);
+                    new_state.key ^= hash::color_square_key(them, sq);
+                }
             }
         }
 
@@ -407,9 +402,7 @@ impl Position {
     }
 
     pub fn pop_move<const UPDATE_KEY: bool>(&mut self, nnue: Option<&mut NnueState>) {
-        debug_assert!(self.states.len() > 1);
-
-        let m = self.states.pop().unwrap().last_move;
+        self.states.pop().expect("pop_move with no state history?");
 
         if UPDATE_KEY {
             self.hashes.pop();
@@ -417,12 +410,14 @@ impl Position {
 
         self.blue_to_move = !self.blue_to_move;
 
-        if m != AtaxxMove::Null && self.blue_to_move {
+        if self.blue_to_move {
             self.fullmove -= 1;
         }
 
         if let Some(nnue) = nnue {
-            nnue.pop();
+            if !nnue.pop() {
+                panic!("what? {}", self.to_fen());
+            }
         }
     }
 
@@ -478,6 +473,16 @@ impl Position {
     #[must_use]
     pub fn key(&self) -> u64 {
         self.curr_state().key
+    }
+
+    #[must_use]
+    pub fn halfmoves(&self) -> u16 {
+        self.curr_state().halfmove
+    }
+
+    #[must_use]
+    pub fn fullmoves(&self) -> u32 {
+        self.fullmove
     }
 
     #[must_use]

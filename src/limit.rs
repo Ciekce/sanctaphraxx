@@ -26,6 +26,7 @@ enum SearchLimiterType {
     Tournament(TimeManager),
 }
 
+#[derive(Debug, Clone)]
 pub struct SearchLimiter {
     limiter: SearchLimiterType,
     stopped: bool,
