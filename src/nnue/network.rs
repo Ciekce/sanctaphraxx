@@ -52,4 +52,4 @@ pub struct Network {
     pub l1: Layer<i16, L1_SIZE, { L1_SIZE * 2 }, 1>,
 }
 
-pub const NETWORK: Network = unsafe { std::mem::transmute(*include_bytes!("net001.nnue")) };
+pub const NETWORK: Network = unsafe { std::mem::transmute(*include_bytes!("net002.nnue")) };

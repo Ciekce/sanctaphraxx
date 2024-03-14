@@ -1,6 +1,6 @@
 [package]
 name = "sanctaphraxx"
-version = "0.1.8"
+version = "0.1.9"
 authors = ["Ciekce"]
 edition = "2021"
 
