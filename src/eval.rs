@@ -16,16 +16,18 @@
  * along with Sanctaphraxx. If not, see <https://www.gnu.org/licenses/>.
  */
 
-use crate::core::Score;
+use crate::core::{Score, SCORE_WIN};
 use crate::nnue;
 use crate::position::Position;
 
 #[must_use]
 pub fn static_eval(pos: &Position, nnue_state: &nnue::NnueState) -> Score {
-    nnue_state.evaluate(pos.side_to_move())
+    let eval = nnue_state.evaluate(pos.side_to_move());
+    eval.clamp(-SCORE_WIN + 1, SCORE_WIN - 1)
 }
 
 #[must_use]
 pub fn static_eval_once(pos: &Position) -> Score {
-    nnue::evaluate_once(pos)
+    let eval = nnue::evaluate_once(pos);
+    eval.clamp(-SCORE_WIN + 1, SCORE_WIN - 1)
 }

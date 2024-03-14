@@ -198,6 +198,7 @@ pub struct NnueState {
 
 impl NnueState {
     pub fn reset(&mut self, pos: &Position) {
+        assert_eq!(self.idx, 0);
         self.idx = 0;
         self.stack[0].reset(pos);
     }
@@ -207,8 +208,12 @@ impl NnueState {
         self.idx += 1;
     }
 
-    pub fn pop(&mut self) {
+    pub fn pop(&mut self) -> bool {
+        if self.idx == 0 {
+            return false;
+        }
         self.idx -= 1;
+        true
     }
 
     fn activate_gap(&mut self, sq: Square) {

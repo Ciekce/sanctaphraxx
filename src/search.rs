@@ -27,11 +27,23 @@ use crate::ttable::{TTable, TtEntry, TtEntryFlag};
 use std::time::Instant;
 
 pub struct SearchContext<'a> {
-    pos: &'a mut Position,
-    nnue_state: NnueState,
-    nodes: usize,
-    seldepth: u32,
-    best_move: AtaxxMove,
+    pub pos: &'a mut Position,
+    pub nnue_state: NnueState,
+    pub nodes: usize,
+    pub seldepth: u32,
+    pub best_move: AtaxxMove,
+}
+
+impl<'a> SearchContext<'a> {
+    pub fn new(pos: &'a mut Position) -> Self {
+        Self {
+            pos,
+            nnue_state: NnueState::default(),
+            nodes: 0,
+            seldepth: 0,
+            best_move: AtaxxMove::None,
+        }
+    }
 }
 
 pub struct Searcher {
@@ -59,31 +71,34 @@ impl Searcher {
     pub fn start_search(&mut self, mut pos: Position, limiter: SearchLimiter, max_depth: i32) {
         self.limiter = limiter;
 
-        let mut ctx = SearchContext {
-            pos: &mut pos,
-            nnue_state: NnueState::default(),
-            nodes: 0,
-            seldepth: 0,
-            best_move: AtaxxMove::None,
-        };
-
+        let mut ctx = SearchContext::new(&mut pos);
         ctx.nnue_state.reset(ctx.pos);
 
         self.search_root(&mut ctx, max_depth, true);
+    }
+
+    pub fn run_datagen_search(
+        &mut self,
+        ctx: &mut SearchContext,
+        limiter: SearchLimiter,
+        max_depth: i32,
+    ) -> Score {
+        self.limiter = limiter;
+
+        let score = self.search_root(ctx, max_depth, false);
+
+        if ctx.pos.side_to_move() == Color::BLUE {
+            -score
+        } else {
+            score
+        }
     }
 
     #[must_use]
     pub fn bench(&mut self, pos: &mut Position, depth: i32) -> (usize, f64) {
         self.limiter = SearchLimiter::infinite();
 
-        let mut ctx = SearchContext {
-            pos,
-            nnue_state: NnueState::default(),
-            nodes: 0,
-            seldepth: 0,
-            best_move: AtaxxMove::None,
-        };
-
+        let mut ctx = SearchContext::new(pos);
         ctx.nnue_state.reset(ctx.pos);
 
         let start = Instant::now();
@@ -94,7 +109,7 @@ impl Searcher {
         (ctx.nodes, time)
     }
 
-    fn search_root(&mut self, ctx: &mut SearchContext, max_depth: i32, report: bool) {
+    fn search_root(&mut self, ctx: &mut SearchContext, max_depth: i32, report: bool) -> Score {
         assert!(max_depth > 0);
 
         let max_depth = max_depth.min(MAX_DEPTH);
@@ -134,6 +149,8 @@ impl Searcher {
 
             println!("bestmove {}", best_move);
         }
+
+        score
     }
 
     #[must_use]
@@ -207,8 +224,14 @@ impl Searcher {
         for (move_idx, &(m, _)) in moves.iter().enumerate() {
             ctx.nodes += 1;
 
-            ctx.pos
-                .apply_move::<true, true>(m, Some(&mut ctx.nnue_state));
+            ctx.pos.apply_move::<true, true>(
+                m,
+                if m != AtaxxMove::Null {
+                    Some(&mut ctx.nnue_state)
+                } else {
+                    None
+                },
+            );
 
             let score = if is_pv && move_idx == 0 {
                 -self.search(ctx, -beta, -alpha, depth - 1, ply + 1)
@@ -221,7 +244,11 @@ impl Searcher {
                 }
             };
 
-            ctx.pos.pop_move::<true>(Some(&mut ctx.nnue_state));
+            ctx.pos.pop_move::<true>(if m != AtaxxMove::Null {
+                Some(&mut ctx.nnue_state)
+            } else {
+                None
+            });
 
             if score > best_score {
                 best_score = score;
