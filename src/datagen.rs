@@ -96,7 +96,7 @@ impl OutputFormat for Fen {
                     Outcome::RedWin => "1.0",
                 }
             )
-            .unwrap()
+            .unwrap();
         }
     }
 }
@@ -119,21 +119,25 @@ impl OutputFormat for BulletFormat {
     const EXTENSION: &'static str = "bin";
 
     fn pack(pos: &Position, red_score: Score) -> Self {
+        #[allow(clippy::unreadable_literal)]
         fn to_bullet_bb(board: Bitboard) -> u64 {
             #[cfg(target_feature = "bmi2")]
             {
                 use core::arch::x86_64::*;
-                return unsafe { _pext_u64(board.raw(), Bitboard::ALL.raw()) };
+                unsafe { _pext_u64(board.raw(), Bitboard::ALL.raw()) }
             }
 
-            let bb = board.raw();
-            bb & 0x7f
-                | (bb & 0x7f00) >> 1
-                | (bb & 0x7f0000) >> 2
-                | (bb & 0x7f000000) >> 3
-                | (bb & 0x7f00000000) >> 4
-                | (bb & 0x7f0000000000) >> 5
-                | (bb & 0x7f000000000000) >> 6
+            #[cfg(not(target_feature = "bmi2"))]
+            {
+                let bb = board.raw();
+                bb & 0x7f
+                    | (bb & 0x7f00) >> 1
+                    | (bb & 0x7f0000) >> 2
+                    | (bb & 0x7f000000) >> 3
+                    | (bb & 0x7f00000000) >> 4
+                    | (bb & 0x7f0000000000) >> 5
+                    | (bb & 0x7f000000000000) >> 6
+            }
         }
 
         let (stm_occ, nstm_occ, stm_score) = if pos.side_to_move() == Color::RED {
@@ -169,7 +173,7 @@ impl OutputFormat for BulletFormat {
         let written = out
             .write(unsafe {
                 std::slice::from_raw_parts(
-                    values.as_ptr() as *const u8,
+                    values.as_ptr().cast::<u8>(),
                     std::mem::size_of_val(values),
                 )
             })
@@ -346,6 +350,7 @@ fn run_thread<T: OutputFormat>(id: u32, games: u32, seed: u64, out_dir: &Path) {
     out.flush().unwrap();
 }
 
+#[allow(clippy::unreadable_literal)]
 fn mix(mut v: u64) -> u64 {
     v ^= v >> 33;
     v = v.wrapping_mul(0xff51afd7ed558ccd);
@@ -360,7 +365,7 @@ pub fn run(output: &str, write_fens: bool, threads: u32, games: u32) {
         .duration_since(UNIX_EPOCH)
         .unwrap_or(Duration::ZERO)
         .as_millis() as u64;
-    let addr = (&time as *const _) as u64;
+    let addr = std::ptr::addr_of!(time) as u64;
 
     let base_seed = mix(time ^ addr);
     println!("base seed: {}", base_seed);
@@ -383,9 +388,9 @@ pub fn run(output: &str, write_fens: bool, threads: u32, games: u32) {
         for id in 0..threads {
             s.spawn(move || {
                 if write_fens {
-                    run_thread::<Fen>(id, games, base_seed + id as u64, output_dir);
+                    run_thread::<Fen>(id, games, base_seed + u64::from(id), output_dir);
                 } else {
-                    run_thread::<BulletFormat>(id, games, base_seed + id as u64, output_dir);
+                    run_thread::<BulletFormat>(id, games, base_seed + u64::from(id), output_dir);
                 }
             });
         }

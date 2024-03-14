@@ -36,6 +36,7 @@ struct UaiHandler {
     pos: Position,
 }
 
+#[allow(clippy::unused_self)]
 impl UaiHandler {
     #[must_use]
     fn new() -> Self {
@@ -112,13 +113,13 @@ impl UaiHandler {
         let name = args[1usize..idx].join(" ");
         let value = args[(idx + 1)..].join(" ");
 
+        #[allow(clippy::single_match)]
         match name.as_str() {
             "Hash" => {
                 if let Ok(new_size) = value.parse::<usize>() {
                     self.searcher.resize_tt(new_size);
                 } else {
                     eprintln!("Invalid hash size");
-                    return;
                 }
             }
             _ => {}
@@ -264,9 +265,7 @@ impl UaiHandler {
                         return;
                     }
 
-                    let value = if let Ok(value) = args[i].parse::<u64>() {
-                        value
-                    } else {
+                    let Ok(value) = args[i].parse::<u64>() else {
                         eprintln!("Invalid {} '{}'", token, args[i]);
                         return;
                     };

@@ -120,6 +120,7 @@ pub enum GameResult {
     Draw,
 }
 
+#[allow(unused)]
 impl Position {
     #[must_use]
     pub fn empty() -> Self {
@@ -145,6 +146,7 @@ impl Position {
         Ok(result)
     }
 
+    #[allow(clippy::unreadable_literal)]
     pub fn reset_to_startpos(&mut self) {
         self.states.clear();
         self.states.push(BoardState {
@@ -162,6 +164,7 @@ impl Position {
         self.regen_curr_key();
     }
 
+    #[allow(clippy::comparison_chain)]
     pub fn reset_from_fen_parts(&mut self, parts: &[&str]) -> Result<(), FenError> {
         if parts.len() < 4 {
             return Err(FenError::NotEnoughParts);
@@ -226,9 +229,7 @@ impl Position {
             return Err(FenError::InvalidHalfmove);
         }
 
-        let fullmove = if let Ok(fullmove) = parts[3].parse::<u32>() {
-            fullmove
-        } else {
+        let Ok(fullmove) = parts[3].parse::<u32>() else {
             return Err(FenError::InvalidFullmove);
         };
 
@@ -297,11 +298,11 @@ impl Position {
         let red_count = state.red_occupancy().popcount();
         let blue_count = state.blue_occupancy().popcount();
 
-        return match red_count.cmp(&blue_count) {
+        match red_count.cmp(&blue_count) {
             Ordering::Less => GameResult::Win(Color::BLUE),
             Ordering::Equal => GameResult::Draw,
             Ordering::Greater => GameResult::Win(Color::RED),
-        };
+        }
     }
 
     pub fn apply_move<const HISTORY: bool, const UPDATE_KEY: bool>(
@@ -415,9 +416,7 @@ impl Position {
         }
 
         if let Some(nnue) = nnue {
-            if !nnue.pop() {
-                panic!("what? {}", self.to_fen());
-            }
+            assert!(nnue.pop(), "what? {}", self.to_fen());
         }
     }
 

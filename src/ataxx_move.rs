@@ -30,8 +30,8 @@ pub enum AtaxxMove {
 
 impl AtaxxMove {
     #[must_use]
-    pub fn pack(&self) -> PackedMove {
-        PackedMove::pack(*self)
+    pub fn pack(self) -> PackedMove {
+        PackedMove::pack(self)
     }
 }
 
@@ -103,20 +103,21 @@ impl PackedMove {
         match m {
             AtaxxMove::None => Self::NONE,
             AtaxxMove::Null => Self::NULL,
-            AtaxxMove::Single(sq) => Self::from_raw((2 << 12) | sq.raw() as u16),
+            AtaxxMove::Single(sq) => Self::from_raw((2 << 12) | u16::from(sq.raw())),
             AtaxxMove::Double(from, to) => {
-                Self::from_raw((3 << 12) | ((from.raw() as u16) << 6) | (to.raw() as u16))
+                Self::from_raw((3 << 12) | (u16::from(from.raw()) << 6) | u16::from(to.raw()))
             }
         }
     }
 
     #[must_use]
-    fn raw(&self) -> u16 {
+    #[allow(unused)]
+    fn raw(self) -> u16 {
         self.value
     }
 
     #[must_use]
-    pub fn unpack(&self) -> AtaxxMove {
+    pub fn unpack(self) -> AtaxxMove {
         match (self.value >> 12) & 0b11 {
             0 => AtaxxMove::None,
             1 => AtaxxMove::Null,
@@ -127,13 +128,13 @@ impl PackedMove {
     }
 
     #[must_use]
-    fn src_sq(&self) -> Square {
-        Square::from_raw(((self.value >> 6) & 0b111111) as u8)
+    fn src_sq(self) -> Square {
+        Square::from_raw(((self.value >> 6) & 0b111_111) as u8)
     }
 
     #[must_use]
-    fn dst_sq(&self) -> Square {
-        Square::from_raw((self.value & 0b111111) as u8)
+    fn dst_sq(self) -> Square {
+        Square::from_raw((self.value & 0b111_111) as u8)
     }
 }
 

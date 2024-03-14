@@ -185,15 +185,15 @@ impl Searcher {
 
         if !is_pv
             && tt_hit
-            && tt_entry.depth as i32 >= depth
+            && i32::from(tt_entry.depth) >= depth
             && match tt_entry.flag {
                 TtEntryFlag::Exact => true,
-                TtEntryFlag::Alpha => tt_entry.score as i32 <= alpha,
-                TtEntryFlag::Beta => tt_entry.score as i32 >= beta,
-                _ => unreachable!(),
+                TtEntryFlag::Alpha => Score::from(tt_entry.score) <= alpha,
+                TtEntryFlag::Beta => Score::from(tt_entry.score) >= beta,
+                TtEntryFlag::None => unreachable!(),
             }
         {
-            return tt_entry.score as i32;
+            return Score::from(tt_entry.score);
         }
 
         // if no tt hit, the entry's move is None

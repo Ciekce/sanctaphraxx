@@ -25,6 +25,7 @@ pub struct Bitboard {
     value: u64,
 }
 
+#[allow(unused, clippy::unreadable_literal)]
 impl Bitboard {
     pub const RANK_1: Self = Self::from_raw(0x0000000000007f);
     pub const RANK_2: Self = Self::from_raw(0x00000000007f00);
@@ -51,27 +52,27 @@ impl Bitboard {
     }
 
     #[must_use]
-    pub const fn raw(&self) -> u64 {
+    pub const fn raw(self) -> u64 {
         self.value
     }
 
     #[must_use]
-    pub const fn popcount(&self) -> u32 {
+    pub const fn popcount(self) -> u32 {
         self.value.count_ones()
     }
 
     #[must_use]
-    pub const fn is_empty(&self) -> bool {
+    pub const fn is_empty(self) -> bool {
         self.value == 0
     }
 
     #[must_use]
-    pub const fn contains_multiple(&self) -> bool {
+    pub const fn contains_multiple(self) -> bool {
         self.value != self.value & (self.value - 1)
     }
 
     #[must_use]
-    pub const fn get(&self, sq: Square) -> bool {
+    pub const fn get(self, sq: Square) -> bool {
         !self.and(sq.bit()).is_empty()
     }
 
@@ -96,47 +97,47 @@ impl Bitboard {
     }
 
     #[must_use]
-    pub const fn and(&self, rhs: Bitboard) -> Self {
+    pub const fn and(self, rhs: Bitboard) -> Self {
         Self {
             value: self.value & rhs.value,
         }
     }
 
     #[must_use]
-    pub const fn or(&self, rhs: Bitboard) -> Self {
+    pub const fn or(self, rhs: Bitboard) -> Self {
         Self {
             value: self.value | rhs.value,
         }
     }
 
     #[must_use]
-    pub const fn xor(&self, rhs: Bitboard) -> Self {
+    pub const fn xor(self, rhs: Bitboard) -> Self {
         Self {
             value: self.value ^ rhs.value,
         }
     }
 
     #[must_use]
-    pub const fn inverse(&self) -> Self {
+    pub const fn inverse(self) -> Self {
         Self { value: !self.value }
     }
 
     #[must_use]
-    pub const fn bitshift_left(&self, rhs: u32) -> Self {
+    pub const fn bitshift_left(self, rhs: u32) -> Self {
         Self {
             value: self.value << rhs,
         }
     }
 
     #[must_use]
-    pub const fn bitshift_right(&self, rhs: u32) -> Self {
+    pub const fn bitshift_right(self, rhs: u32) -> Self {
         Self {
             value: self.value >> rhs,
         }
     }
 
     #[must_use]
-    pub const fn shift_up(&self) -> Self {
+    pub const fn shift_up(self) -> Self {
         const MASK: Bitboard = Bitboard::ALL;
         Self {
             value: self.value << 8,
@@ -145,14 +146,14 @@ impl Bitboard {
     }
 
     #[must_use]
-    pub const fn shift_down(&self) -> Self {
+    pub const fn shift_down(self) -> Self {
         Self {
             value: self.value >> 8,
         }
     }
 
     #[must_use]
-    pub const fn shift_left(&self) -> Self {
+    pub const fn shift_left(self) -> Self {
         // normally in chess you would need to also mask off the H file
         // but there is no H file in ataxx
         const MASK: Bitboard = Bitboard::ALL;
@@ -163,7 +164,7 @@ impl Bitboard {
     }
 
     #[must_use]
-    pub const fn shift_right(&self) -> Self {
+    pub const fn shift_right(self) -> Self {
         // see above
         // can't wrap anything to A if there is no H
         const MASK: Bitboard = Bitboard::ALL;
@@ -174,7 +175,7 @@ impl Bitboard {
     }
 
     #[must_use]
-    pub const fn shift_up_left(&self) -> Self {
+    pub const fn shift_up_left(self) -> Self {
         const MASK: Bitboard = Bitboard::ALL;
         Self {
             value: self.value << 7,
@@ -183,7 +184,7 @@ impl Bitboard {
     }
 
     #[must_use]
-    pub const fn shift_up_right(&self) -> Self {
+    pub const fn shift_up_right(self) -> Self {
         const MASK: Bitboard = Bitboard::ALL;
         Self {
             value: self.value << 9,
@@ -192,7 +193,7 @@ impl Bitboard {
     }
 
     #[must_use]
-    pub const fn shift_down_left(&self) -> Self {
+    pub const fn shift_down_left(self) -> Self {
         const MASK: Bitboard = Bitboard::ALL;
         Self {
             value: self.value >> 9,
@@ -201,7 +202,7 @@ impl Bitboard {
     }
 
     #[must_use]
-    pub const fn shift_down_right(&self) -> Self {
+    pub const fn shift_down_right(self) -> Self {
         const MASK: Bitboard = Bitboard::ALL;
         Self {
             value: self.value >> 7,
@@ -210,7 +211,7 @@ impl Bitboard {
     }
 
     #[must_use]
-    pub const fn expand(&self) -> Self {
+    pub const fn expand(self) -> Self {
         let board = self.or(self.shift_up().or(self.shift_down()));
         board
             .or(board.shift_left().or(board.shift_right()))
@@ -218,7 +219,7 @@ impl Bitboard {
     }
 
     #[must_use]
-    pub const fn lowest_square(&self) -> Square {
+    pub const fn lowest_square(self) -> Square {
         Square::from_raw(self.value.trailing_zeros() as u8)
     }
 

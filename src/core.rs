@@ -23,6 +23,7 @@ use std::str::FromStr;
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct Square(u8);
 
+#[allow(unused)]
 impl Square {
     pub const A1: Self = Self(0);
     pub const B1: Self = Self(1);
@@ -93,42 +94,42 @@ impl Square {
     }
 
     #[must_use]
-    pub fn raw(&self) -> u8 {
+    pub fn raw(self) -> u8 {
         self.0
     }
 
     #[must_use]
-    pub const fn idx(&self) -> usize {
+    pub const fn idx(self) -> usize {
         (self.rank() * 7 + self.file()) as usize
     }
 
     #[must_use]
-    pub const fn bit_idx(&self) -> usize {
+    pub const fn bit_idx(self) -> usize {
         self.0 as usize
     }
 
     #[must_use]
-    pub const fn bit(&self) -> Bitboard {
+    pub const fn bit(self) -> Bitboard {
         Bitboard::from_raw(1 << self.bit_idx())
     }
 
     #[must_use]
-    pub const fn rank(&self) -> u32 {
+    pub const fn rank(self) -> u32 {
         self.0 as u32 / 8
     }
 
     #[must_use]
-    pub const fn file(&self) -> u32 {
+    pub const fn file(self) -> u32 {
         self.0 as u32 % 8
     }
 
     #[must_use]
-    pub const fn flip_horizontal(&self) -> Self {
+    pub const fn flip_horizontal(self) -> Self {
         Self::from_coords(self.rank(), 6 - self.file())
     }
 
     #[must_use]
-    pub const fn flip_vertical(&self) -> Self {
+    pub const fn flip_vertical(self) -> Self {
         Self::from_coords(6 - self.rank(), self.file())
     }
 }
@@ -214,13 +215,13 @@ impl Color {
     }
 
     #[must_use]
-    pub fn flip(&self) -> Self {
-        debug_assert!(*self != Self::NONE);
+    pub fn flip(self) -> Self {
+        debug_assert_ne!(self, Self::NONE);
         Self::from_raw(self.value ^ 1)
     }
 
     #[must_use]
-    pub fn idx(&self) -> usize {
+    pub fn idx(self) -> usize {
         self.value as usize
     }
 }

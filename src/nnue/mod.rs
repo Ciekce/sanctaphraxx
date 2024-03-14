@@ -76,6 +76,7 @@ impl Accumulator {
         }
     }
 
+    #[allow(unused)]
     fn move_feature(&mut self, src_feature: usize, dst_feature: usize) {
         for i in (0..L1_SIZE).step_by(simd::CHUNK_SIZE_I16) {
             let ptr = self.value_ptr_mut(i);
@@ -180,6 +181,7 @@ impl AccumulatorPair {
         self.blue_mut().deactivate_feature(blue_idx);
     }
 
+    #[allow(unused)]
     pub fn move_feature(&mut self, c: Color, src_sq: Square, dst_sq: Square) {
         let (red_src_idx, blue_src_idx) = piece_indices(c, src_sq);
         let (red_dst_idx, blue_dst_idx) = piece_indices(c, dst_sq);
@@ -216,11 +218,6 @@ impl NnueState {
         true
     }
 
-    fn activate_gap(&mut self, sq: Square) {
-        let accs = &mut self.stack[self.idx];
-        accs.activate_gap(sq);
-    }
-
     pub fn activate_feature(&mut self, c: Color, sq: Square) {
         let accs = &mut self.stack[self.idx];
         accs.activate_feature(c, sq);
@@ -231,6 +228,7 @@ impl NnueState {
         accs.deactivate_feature(c, sq);
     }
 
+    #[allow(unused)]
     pub fn move_feature(&mut self, c: Color, src_sq: Square, dst_sq: Square) {
         let accs = &mut self.stack[self.idx];
         accs.move_feature(c, src_sq, dst_sq);

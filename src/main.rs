@@ -16,6 +16,20 @@
  * along with Sanctaphraxx. If not, see <https://www.gnu.org/licenses/>.
  */
 
+#![warn(clippy::pedantic)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_possible_wrap)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::if_not_else)]
+#![allow(clippy::inline_always)]
+#![allow(clippy::match_on_vec_items)]
+#![allow(clippy::module_name_repetitions)]
+#![allow(clippy::similar_names)]
+#![allow(clippy::too_many_lines)]
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::wildcard_imports)]
+
 use crate::bench::{run_bench, DEFAULT_BENCH_DEPTH};
 use crate::search::Searcher;
 use std::env;
@@ -73,7 +87,7 @@ fn main() {
 
                 let threads = args
                     .get(4)
-                    .map(|arg| {
+                    .map_or(1, |arg| {
                         if let Ok(threads) = arg.parse::<u32>() {
                             threads
                         } else {
@@ -84,12 +98,11 @@ fn main() {
                             );
                             exit(1);
                         }
-                    })
-                    .unwrap_or(1);
+                    });
 
                 let games = args
                     .get(5)
-                    .map(|arg| {
+                    .map_or(datagen::UNLIMITED_GAMES, |arg| {
                         if let Ok(games) = arg.parse::<u32>() {
                             games
                         } else {
@@ -100,8 +113,7 @@ fn main() {
                             );
                             exit(1);
                         }
-                    })
-                    .unwrap_or(datagen::UNLIMITED_GAMES);
+                    });
 
                 datagen::run(args[3].as_str(), write_fens, threads, games);
                 return;

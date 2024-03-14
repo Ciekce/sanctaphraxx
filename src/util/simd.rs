@@ -149,7 +149,7 @@ pub unsafe fn store16(ptr: *mut Register16, v: Register16) {
 
     #[cfg(all(target_feature = "avx512f", target_feature = "avx512bw"))]
     {
-        _mm512_store_si512(ptr as *mut i32, v)
+        _mm512_store_si512(ptr as *mut i32, v);
     }
 
     #[cfg(all(
@@ -157,17 +157,17 @@ pub unsafe fn store16(ptr: *mut Register16, v: Register16) {
         not(all(target_feature = "avx512f", target_feature = "avx512bw"))
     ))]
     {
-        _mm256_store_si256(ptr, v)
+        _mm256_store_si256(ptr, v);
     }
 
     #[cfg(all(target_feature = "sse4.1", not(target_feature = "avx2")))]
     {
-        _mm_store_si128(ptr, v)
+        _mm_store_si128(ptr, v);
     }
 
     #[cfg(not(target_feature = "sse4.1"))]
     {
-        *ptr = v
+        *ptr = v;
     }
 }
 

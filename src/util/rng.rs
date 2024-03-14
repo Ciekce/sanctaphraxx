@@ -40,6 +40,7 @@ pub struct Jsf64Rng {
 impl Jsf64Rng {
     #[must_use]
     pub const fn new(seed: u64) -> Self {
+        #[allow(clippy::unreadable_literal)]
         let mut result = Self {
             a: 0xF1EA5EED,
             b: seed,

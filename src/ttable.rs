@@ -60,7 +60,7 @@ impl TTable {
     pub const DEFAULT_SIZE_MB: usize = 64;
 
     pub const MIN_SIZE_MB: usize = 1;
-    pub const MAX_SIZE_MB: usize = 131072;
+    pub const MAX_SIZE_MB: usize = 131_072;
 
     #[must_use]
     pub fn new() -> Self {
@@ -111,7 +111,7 @@ impl TTable {
 
     #[must_use]
     fn index(&self, key: u64) -> usize {
-        (((key as u128) * (self.table.len() as u128)) >> 64) as usize
+        ((u128::from(key) * (self.table.len() as u128)) >> 64) as usize
     }
 
     #[must_use]
