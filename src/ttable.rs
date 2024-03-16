@@ -31,7 +31,7 @@ pub enum TtEntryFlag {
 #[derive(Debug, Copy, Clone)]
 pub struct TtEntry {
     pub key: u16,
-    pub m: PackedMove,
+    pub mv: PackedMove,
     pub score: i16,
     pub depth: u8,
     pub flag: TtEntryFlag,
@@ -45,7 +45,7 @@ impl Default for TtEntry {
         Self {
             key: 0,
             score: 0,
-            m: PackedMove::NONE,
+            mv: PackedMove::NONE,
             depth: 0,
             flag: TtEntryFlag::None,
         }
@@ -95,14 +95,14 @@ impl TTable {
         }
     }
 
-    pub fn store(&mut self, key: u64, m: AtaxxMove, score: Score, depth: i32, flag: TtEntryFlag) {
+    pub fn store(&mut self, key: u64, mv: AtaxxMove, score: Score, depth: i32, flag: TtEntryFlag) {
         debug_assert!(score.abs() < SCORE_INF);
         debug_assert!((0..=MAX_DEPTH).contains(&depth));
 
         let idx = self.index(key);
         self.table[idx] = TtEntry {
             key: Self::pack_key(key),
-            m: m.pack(),
+            mv: mv.pack(),
             score: score as i16,
             depth: depth as u8,
             flag,

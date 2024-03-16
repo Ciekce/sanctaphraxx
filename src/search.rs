@@ -23,7 +23,7 @@ use crate::limit::SearchLimiter;
 use crate::movegen::{fill_scored_move_list, ScoredMoveList};
 use crate::nnue::NnueState;
 use crate::position::{GameResult, Position};
-use crate::ttable::{TTable, TtEntry, TtEntryFlag};
+use crate::ttable::{TTable, TtEntryFlag};
 use std::time::Instant;
 
 pub struct SearchContext<'a> {
@@ -175,12 +175,7 @@ impl Searcher {
         let is_root = ply == 0;
         let is_pv = beta - alpha > 1;
 
-        let tt_entry = if let Some(tt_entry) = self.ttable.probe(ctx.pos.key()) {
-            tt_entry
-        } else {
-            TtEntry::default()
-        };
-
+        let tt_entry = self.ttable.probe(ctx.pos.key()).unwrap_or_default();
         let tt_hit = tt_entry.flag != TtEntryFlag::None;
 
         if !is_pv
@@ -197,7 +192,7 @@ impl Searcher {
         }
 
         // if no tt hit, the entry's move is None
-        let tt_move = tt_entry.m.unpack();
+        let tt_move = tt_entry.mv.unpack();
 
         let mut moves = ScoredMoveList::new();
         fill_scored_move_list(&mut moves, ctx.pos);
@@ -221,12 +216,12 @@ impl Searcher {
 
         let mut entry_flag = TtEntryFlag::Alpha;
 
-        for (move_idx, &(m, _)) in moves.iter().enumerate() {
+        for (move_idx, &(mv, _)) in moves.iter().enumerate() {
             ctx.nodes += 1;
 
             ctx.pos.apply_move::<true, true>(
-                m,
-                if m != AtaxxMove::Null {
+                mv,
+                if mv != AtaxxMove::Null {
                     Some(&mut ctx.nnue_state)
                 } else {
                     None
@@ -244,7 +239,7 @@ impl Searcher {
                 }
             };
 
-            ctx.pos.pop_move::<true>(if m != AtaxxMove::Null {
+            ctx.pos.pop_move::<true>(if mv != AtaxxMove::Null {
                 Some(&mut ctx.nnue_state)
             } else {
                 None
@@ -254,10 +249,10 @@ impl Searcher {
                 best_score = score;
 
                 if score > alpha {
-                    best_move = m;
+                    best_move = mv;
 
                     if is_root {
-                        ctx.best_move = m;
+                        ctx.best_move = mv;
                     }
 
                     if score >= beta {
@@ -282,8 +277,8 @@ impl Searcher {
     // very temporary solution
     //TODO movepicker
     fn order_moves(moves: &mut ScoredMoveList, tt_move: AtaxxMove) {
-        for (m, score) in moves.iter_mut() {
-            if *m == tt_move {
+        for (mv, score) in moves.iter_mut() {
+            if *mv == tt_move {
                 *score = 100;
                 break;
             }
@@ -292,7 +287,7 @@ impl Searcher {
         moves.sort_unstable_by(|(_, a_score), (_, b_score)| b_score.cmp(a_score));
     }
 
-    fn report(ctx: &SearchContext, m: AtaxxMove, depth: i32, time: f64, score: Score) {
+    fn report(ctx: &SearchContext, mv: AtaxxMove, depth: i32, time: f64, score: Score) {
         let nps = (ctx.nodes as f64 / time) as usize;
 
         println!(
@@ -314,7 +309,7 @@ impl Searcher {
             } else {
                 format!("cp {}", score)
             },
-            m
+            mv
         );
     }
 }

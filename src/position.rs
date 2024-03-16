@@ -307,11 +307,11 @@ impl Position {
 
     pub fn apply_move<const HISTORY: bool, const UPDATE_KEY: bool>(
         &mut self,
-        m: AtaxxMove,
+        mv: AtaxxMove,
         nnue: Option<&mut NnueState>,
     ) {
-        debug_assert!(m != AtaxxMove::None);
-        debug_assert!(m != AtaxxMove::Null || nnue.is_none());
+        debug_assert!(mv != AtaxxMove::None);
+        debug_assert!(mv != AtaxxMove::Null || nnue.is_none());
 
         let us = self.side_to_move();
         let them = us.flip();
@@ -329,8 +329,8 @@ impl Position {
             self.fullmove += 1;
         }
 
-        if m != AtaxxMove::Null {
-            let (from, to) = match m {
+        if mv != AtaxxMove::Null {
+            let (from, to) = match mv {
                 AtaxxMove::Single(to) => {
                     new_state.halfmove = 0;
                     (to, to)
