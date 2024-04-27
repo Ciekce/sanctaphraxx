@@ -261,7 +261,6 @@ fn run_thread<T: OutputFormat>(id: u32, games: u32, seed: u64, out_dir: &Path) {
         let mut draw_plies = 0u32;
 
         loop {
-            ctx.nnue_state.reset(ctx.pos);
             let score = searcher.run_datagen_search(&mut ctx, limiter.clone(), MAX_DEPTH);
             assert_ne!(ctx.best_move, AtaxxMove::None);
 

@@ -21,14 +21,12 @@ use crate::core::*;
 use crate::eval::static_eval;
 use crate::limit::SearchLimiter;
 use crate::movegen::{fill_scored_move_list, ScoredMoveList};
-use crate::nnue::NnueState;
 use crate::position::{GameResult, Position};
 use crate::ttable::{TTable, TtEntryFlag};
 use std::time::Instant;
 
 pub struct SearchContext<'a> {
     pub pos: &'a mut Position,
-    pub nnue_state: NnueState,
     pub nodes: usize,
     pub seldepth: u32,
     pub best_move: AtaxxMove,
@@ -38,7 +36,6 @@ impl<'a> SearchContext<'a> {
     pub fn new(pos: &'a mut Position) -> Self {
         Self {
             pos,
-            nnue_state: NnueState::default(),
             nodes: 0,
             seldepth: 0,
             best_move: AtaxxMove::None,
@@ -72,8 +69,6 @@ impl Searcher {
         self.limiter = limiter;
 
         let mut ctx = SearchContext::new(&mut pos);
-        ctx.nnue_state.reset(ctx.pos);
-
         self.search_root(&mut ctx, max_depth, true);
     }
 
@@ -99,7 +94,6 @@ impl Searcher {
         self.limiter = SearchLimiter::infinite();
 
         let mut ctx = SearchContext::new(pos);
-        ctx.nnue_state.reset(ctx.pos);
 
         let start = Instant::now();
 
@@ -169,7 +163,7 @@ impl Searcher {
         ctx.seldepth = ctx.seldepth.max(ply as u32);
 
         if depth <= 0 || ply >= MAX_DEPTH {
-            return static_eval(ctx.pos, &ctx.nnue_state);
+            return static_eval(ctx.pos);
         }
 
         let is_root = ply == 0;
@@ -219,14 +213,7 @@ impl Searcher {
         for (move_idx, &(mv, _)) in moves.iter().enumerate() {
             ctx.nodes += 1;
 
-            ctx.pos.apply_move::<true, true>(
-                mv,
-                if mv != AtaxxMove::Null {
-                    Some(&mut ctx.nnue_state)
-                } else {
-                    None
-                },
-            );
+            ctx.pos.apply_move::<true, true>(mv, None);
 
             let score = if is_pv && move_idx == 0 {
                 -self.search(ctx, -beta, -alpha, depth - 1, ply + 1)
@@ -239,11 +226,7 @@ impl Searcher {
                 }
             };
 
-            ctx.pos.pop_move::<true>(if mv != AtaxxMove::Null {
-                Some(&mut ctx.nnue_state)
-            } else {
-                None
-            });
+            ctx.pos.pop_move::<true>(None);
 
             if score > best_score {
                 best_score = score;
