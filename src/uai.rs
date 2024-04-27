@@ -114,8 +114,8 @@ impl UaiHandler {
         let value = args[(idx + 1)..].join(" ");
 
         #[allow(clippy::single_match)]
-        match name.as_str() {
-            "Hash" => {
+        match name.to_ascii_lowercase().as_str() {
+            "hash" => {
                 if let Ok(new_size) = value.parse::<usize>() {
                     self.searcher.resize_tt(new_size);
                 } else {
